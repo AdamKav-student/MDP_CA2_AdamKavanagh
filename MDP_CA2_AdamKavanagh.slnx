@@ -1,0 +1,7 @@
+<Solution>
+  <Configurations>
+    <Platform Name="x64" />
+    <Platform Name="x86" />
+  </Configurations>
+  <Project Path="MDP_CA2_AdamKavanagh/MDP_CA2_AdamKavanagh.vcxproj" />
+</Solution>
