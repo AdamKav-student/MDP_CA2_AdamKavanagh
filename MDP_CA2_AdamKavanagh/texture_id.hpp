@@ -1,0 +1,25 @@
+#pragma once
+enum class TextureID
+{
+	kLandscape,
+	kEagle,
+	kRaptor,
+	kAvenger,
+	kTitleScreen,
+	kButtonNormal,
+	kButtonSelected,
+	kButtonActivated,
+	kBullet,
+	kMissile,
+	kHealthRefill,
+	kMissileRefill,
+	kFireSpread,
+	kFireRate,
+	kFinishLine,
+	kEntities,
+	kButtons,
+	kExplosion,
+	kJungle,
+	kParticle,
+	kNumTextures,
+};
