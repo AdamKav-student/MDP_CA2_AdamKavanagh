@@ -4,6 +4,7 @@
 
 #include <SFML/Audio/Listener.hpp>
 
+#include <stdexcept>
 #include <cmath>
 
 
@@ -25,7 +26,14 @@ SoundPlayer::SoundPlayer()
 	m_sound_buffers.Load(SoundEffect::kExplosion2, "Media/Sound/Explosion2.wav");
 	m_sound_buffers.Load(SoundEffect::kLaunchMissile, "Media/Sound/LaunchMissile.wav");
 	m_sound_buffers.Load(SoundEffect::kCollectPickup, "Media/Sound/CollectPickup.wav");
-	m_sound_buffers.Load(SoundEffect::kButton, "Media/Sound/Button.wav");
+
+
+    // Menu Audio SFX
+    m_sound_buffers.Load(SoundEffect::kButton1, "Media/Sound/Menu ping 1.wav");
+    m_sound_buffers.Load(SoundEffect::kButton2, "Media/Sound/Menu ping 2.wav");
+    m_sound_buffers.Load(SoundEffect::kButton3, "Media/Sound/Menu ping 3.wav");
+    m_sound_buffers.Load(SoundEffect::kButton4, "Media/Sound/Menu ping 4.wav");
+    m_sound_buffers.Load(SoundEffect::kButtonConfirm, "Media/Sound/Confirmation.wav");
 
 	// Listener points towards the screen (default in SFML)
 	sf::Listener::setDirection({ 0.f, 0.f, -1.f });

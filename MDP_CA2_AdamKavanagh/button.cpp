@@ -3,6 +3,7 @@
 #include "utility.hpp"
 #include "SFML/Graphics/Rect.hpp"
 #include "texture_id.hpp"
+#include "sound_effect.hpp"
 
 gui::Button::Button(State::Context context)
     : m_sprite(context.textures->Get(TextureID::kButtons))
@@ -40,6 +41,11 @@ void gui::Button::Select()
 {
     Component::Select();
     ChangeTexture(ButtonType::kSelected);
+
+    // Plays selection sound (menu ping)
+    int index = Utility::RandomInt(4); // returns 0..3
+    SoundEffect effect = static_cast<SoundEffect>(static_cast<int>(SoundEffect::kButton1) + index);
+    m_sounds.Play(effect);
 }
 
 void gui::Button::Deselect()
@@ -63,7 +69,9 @@ void gui::Button::Activate()
     {
         Deactivate();
     }
-    m_sounds.Play(SoundEffect::kButton);
+
+    // Play confirmation sfx
+    m_sounds.Play(SoundEffect::kButtonConfirm);
 }
 
 void gui::Button::Deactivate()

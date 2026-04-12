@@ -6,6 +6,7 @@ enum class TextureID
 	kRaptor,
 	kAvenger,
 	kTitleScreen,
+    kSettingsScreen,
 	kButtonNormal,
 	kButtonSelected,
 	kButtonActivated,

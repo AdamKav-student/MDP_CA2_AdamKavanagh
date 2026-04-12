@@ -4,7 +4,7 @@
 SettingsState::SettingsState(StateStack& stack, Context context)
     : State(stack, context)
     , m_gui_container()
-    , m_background_sprite(context.textures->Get(TextureID::kTitleScreen))
+    , m_background_sprite(context.textures->Get(TextureID::kSettingsScreen))
 {
     //Build key binding buttons and labels
     for (std::size_t x = 0; x < 2; ++x)
