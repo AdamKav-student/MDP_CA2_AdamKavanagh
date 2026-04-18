@@ -69,6 +69,24 @@ void World::Update(sf::Time dt)
 
 	m_scene_graph.Update(dt, m_command_queue);
 	AdaptPlayerPosition();
+
+    // Let the camera follow the first player and clamp to world bounds
+    if (!m_player_aircraft.empty())
+    {
+        sf::Vector2f position = m_player_aircraft.front()->getPosition();
+        sf::Vector2f halfSize = m_camera.getSize() / 2.f;
+
+        float minX = m_world_bounds.position.x + halfSize.x;
+        float maxX = m_world_bounds.position.x + m_world_bounds.size.x - halfSize.x;
+        float minY = m_world_bounds.position.y + halfSize.y;
+        float maxY = m_world_bounds.position.y + m_world_bounds.size.y - halfSize.y;
+
+        if (minX > maxX) position.x = (minX + maxX) / 2.f; else position.x = std::max(minX, std::min(position.x, maxX));
+        if (minY > maxY) position.y = (minY + maxY) / 2.f; else position.y = std::max(minY, std::min(position.y, maxY));
+
+        m_camera.setCenter(position);
+    }
+
 	//UpdateSounds();
 }
 

@@ -5,23 +5,51 @@
 #include "network_protocol.hpp"
 #include <SFML/Network/Packet.hpp>
 
+#include "utility.hpp"
+
 #include <map>
 
 struct AircraftMover
 {
-    AircraftMover(float vx, float vy, int identifier) 
-        : velocity(vx, vy) 
+    AircraftMover(float dir, int identifier)
+        : direction(dir)
         , aircraft_id(identifier)
     {}
+
     void operator()(Aircraft& aircraft, sf::Time) const
     {
         if (aircraft.GetIdentifier() == aircraft_id)
         {
-            aircraft.Accelerate(velocity * aircraft.GetMaxSpeed());
+            // Compute heading from aircraft rotation and accelerate in that direction
+            float radians = aircraft.getRotation().asRadians();
+            // Adjust so that rotation 0 points upwards (sfml rotation 0 -> up)
+            double adj = radians - Utility::ToRadians(90.f);
+            sf::Vector2f heading(static_cast<float>(std::cos(adj)), static_cast<float>(std::sin(adj)));
+            aircraft.Accelerate(heading * aircraft.GetMaxSpeed() * direction);
         }
     }
 
-    sf::Vector2f velocity;
+    float direction;
+    int aircraft_id;
+};
+
+struct AircraftRotator
+{
+    AircraftRotator(float angularVel, int identifier)
+        : angular_velocity(angularVel)
+        , aircraft_id(identifier)
+    {}
+
+    void operator()(Aircraft& aircraft, sf::Time dt) const
+    {
+        if (aircraft.GetIdentifier() == aircraft_id)
+        {
+            // Rotate by angular velocity (degrees per second)
+            aircraft.rotate(sf::degrees(angular_velocity * dt.asSeconds()));
+        }
+    }
+
+    float angular_velocity; // degrees per second
     int aircraft_id;
 };
 
@@ -192,10 +220,12 @@ MissionStatus Player::GetMissionStatus() const
 
 void Player::InitialiseActions()
 {
-    m_action_binding[Action::kMoveLeft].action = DerivedAction<Aircraft>(AircraftMover(-1, 0.f, m_identifier));
-    m_action_binding[Action::kMoveRight].action = DerivedAction<Aircraft>(AircraftMover(+1, 0.f, m_identifier));
-    m_action_binding[Action::kMoveUp].action = DerivedAction<Aircraft>(AircraftMover(0.f, -1, m_identifier));
-    m_action_binding[Action::kMoveDown].action = DerivedAction<Aircraft>(AircraftMover(0.f, 1, m_identifier));
+    // Rotate left / right with A / D
+    m_action_binding[Action::kMoveLeft].action = DerivedAction<Aircraft>(AircraftRotator(-180.f, m_identifier));
+    m_action_binding[Action::kMoveRight].action = DerivedAction<Aircraft>(AircraftRotator(+180.f, m_identifier));
+    // Move forward / backward with W / S (direction 1 = forward, -1 = backward)
+    m_action_binding[Action::kMoveUp].action = DerivedAction<Aircraft>(AircraftMover(1.f, m_identifier));
+    m_action_binding[Action::kMoveDown].action = DerivedAction<Aircraft>(AircraftMover(-1.f, m_identifier));
     m_action_binding[Action::kBulletFire].action = DerivedAction<Aircraft>(AircraftFireTrigger(m_identifier));
     m_action_binding[Action::kMissileFire].action = DerivedAction<Aircraft>(AircraftMissileTrigger(m_identifier));
 }

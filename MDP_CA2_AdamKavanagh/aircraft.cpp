@@ -160,10 +160,11 @@ void Aircraft::UpdateTexts()
 	{
 		m_health_display->SetString(std::to_string(GetHitPoints()) + "HP");
 	}
-	m_health_display->setPosition(sf::Vector2f(0.f, 50.f));
-	m_health_display->setRotation(-getRotation());
+    m_health_display->setPosition(sf::Vector2f(0.f, 50.f));
+	// Keep the health text upright in world coordinates by cancelling the aircraft rotation
+	m_health_display->setRotation(sf::degrees(-getRotation().asDegrees()));
 
-	if (m_missile_display)
+    if (m_missile_display)
 	{
 		if (m_missile_ammo == 0)
 		{
@@ -173,6 +174,8 @@ void Aircraft::UpdateTexts()
 		{
 			m_missile_display->SetString("M: " + std::to_string(m_missile_ammo));
 		}
+        // Keep missile display text upright in world coordinates by cancelling the aircraft rotation
+		m_missile_display->setRotation(sf::degrees(-getRotation().asDegrees()));
 	}
 }
 
