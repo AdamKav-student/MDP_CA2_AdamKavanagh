@@ -19,7 +19,7 @@ World::World(sf::RenderTarget& output_target, FontHolder& font, SoundPlayer& sou
 	, m_scene_layers()
 	, m_world_bounds(sf::Vector2f(0.f, 0.f), sf::Vector2f(m_camera.getSize().x, 5000.f))
 	, m_spawn_position(m_camera.getSize().x / 2.f, m_world_bounds.size.y - m_camera.getSize().y/2.f)
-	, m_scroll_speed(-50.f)
+    , m_scroll_speed(0.f)
 	, m_scrollspeed_compensation(1.f)
 	, m_player_aircraft()
 	, m_enemy_spawn_points()
@@ -173,7 +173,7 @@ void World::LoadTextures()
 	m_textures.Load(TextureID::kEntities, "Media/Textures/Entities.png");
 	m_textures.Load(TextureID::kExplosion, "Media/Textures/Explosion.png");
 	m_textures.Load(TextureID::kFinishLine, "Media/Textures/FinishLine.png");
-	m_textures.Load(TextureID::kJungle, "Media/Textures/Jungle.png");
+	m_textures.Load(TextureID::kMap1, "Media/Textures/Road to caen.png");
 	m_textures.Load(TextureID::kParticle, "Media/Textures/Particle.png");
 }
 
@@ -189,7 +189,7 @@ void World::BuildScene()
 	}
 
 	//Prepare the background
-	sf::Texture& texture = m_textures.Get(TextureID::kJungle);
+	sf::Texture& texture = m_textures.Get(TextureID::kMap1);
 	sf::IntRect texture_rect(m_world_bounds);
 	texture.setRepeated(true);
 
@@ -247,8 +247,7 @@ void World::AdaptPlayerVelocity()
 		{
 			aircraft->SetVelocity(velocity / std::sqrt(2.f));
 		}
-		//Add scrolling velocity
-		aircraft->Accelerate(0.f, m_scroll_speed);
+        // Auto-scrolling removed: do not add scrolling velocity to aircraft
 	}
 }
 

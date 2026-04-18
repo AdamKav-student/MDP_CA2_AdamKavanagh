@@ -3,5 +3,5 @@
     <Platform Name="x64" />
     <Platform Name="x86" />
   </Configurations>
-  <Project Path="MDP_CA2_AdamKavanagh/MDP_CA2_AdamKavanagh.vcxproj" />
+  <Project Path="MDP_CA2_AdamKavanagh/MDP_CA2_AdamKavanagh.vcxproj" Id="17391bb9-2141-4653-aace-40c5693d7d6b" />
 </Solution>

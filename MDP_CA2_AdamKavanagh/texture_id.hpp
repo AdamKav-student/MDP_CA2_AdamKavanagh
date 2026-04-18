@@ -1,7 +1,6 @@
 #pragma once
 enum class TextureID
 {
-	kLandscape,
 	kEagle,
 	kRaptor,
 	kAvenger,
@@ -20,7 +19,16 @@ enum class TextureID
 	kEntities,
 	kButtons,
 	kExplosion,
-	kJungle,
+
+    kSherman,
+    kShermanTurret,
+
+    kPanzerTurret,
+    kPanzer,
+
+	kMap1,
+    kMap2,
+
 	kParticle,
 	kNumTextures,
 };

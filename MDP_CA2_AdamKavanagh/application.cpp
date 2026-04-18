@@ -10,15 +10,18 @@
 #include "multiplayer_gamestate.hpp"
 
 Application::Application() 
-	: m_window(sf::VideoMode({ 1512, 694 }), "Armoured Warfare:1944", sf::Style::Close)
+	: m_window(sf::VideoMode::getDesktopMode(), "Armoured Warfare:1944", sf::Style::Close)
 	, m_key_binding_1(1)
 	, m_key_binding_2(2)
 	, m_stack(State::Context(m_window, m_textures, m_fonts, m_music, m_sound, m_key_binding_1, m_key_binding_2))
 {
 	m_window.setKeyRepeatEnabled(false);
     m_fonts.Load(FontID::kMain, "Media/Fonts/BOMBARD_.ttf");
-    m_textures.Load(TextureID::kTitleScreen, "Media/Menu/MainMenu.png");
-    m_textures.Load(TextureID::kSettingsScreen, "Media/Menu/SettingsMenu.png");
+    m_textures.Load(TextureID::kTitleScreen, "Media/Menu/Menu New.png");
+    // "Media/Menu/Title Screen.png")
+    m_textures.Load(TextureID::kSettingsScreen, "Media/Menu/Settings New.png");
+    //"Media/Menu/Settings New.png")
+    //"Media/Menu/Lobby Image.png")
 	m_textures.Load(TextureID::kButtons, "Media/Textures/Buttons.png");
 
 	RegisterStates();
