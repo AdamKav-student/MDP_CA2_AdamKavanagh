@@ -189,6 +189,8 @@ bool World::HasPlayerReachedEnd() const
 void World::LoadTextures()
 {
 	m_textures.Load(TextureID::kEntities, "Media/Textures/Entities.png");
+    // Sprite-sheet for player models
+    m_textures.Load(TextureID::kSherman, "Media/Textures/S1.png");
 	m_textures.Load(TextureID::kExplosion, "Media/Textures/Explosion.png");
 	m_textures.Load(TextureID::kFinishLine, "Media/Textures/FinishLine.png");
 	m_textures.Load(TextureID::kMap1, "Media/Textures/Road to caen.png");

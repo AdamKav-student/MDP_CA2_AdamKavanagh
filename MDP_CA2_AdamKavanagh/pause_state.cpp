@@ -16,7 +16,7 @@ PauseState::PauseState(StateStack& stack, Context context, bool lets_updates_thr
 
     auto returnButton = std::make_shared<gui::Button>(context);
     returnButton->setPosition(sf::Vector2f(0.5f * view_size.x - 100, 0.4f * view_size.y + 75));
-    returnButton->SetText("Return");
+    returnButton->SetText("Resume");
     returnButton->SetCallback([this]()
         {
             RequestStackPop();

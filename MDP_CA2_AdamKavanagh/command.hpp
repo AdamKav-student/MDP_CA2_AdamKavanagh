@@ -2,6 +2,7 @@
 #include <functional>
 #include "receiver_categories.hpp"
 #include <SFML/System/Time.hpp>
+#include <cassert>
 
 class SceneNode;
 

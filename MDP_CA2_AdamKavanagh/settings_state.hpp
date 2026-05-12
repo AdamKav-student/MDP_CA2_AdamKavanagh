@@ -22,5 +22,7 @@ private:
 	gui::Container m_gui_container;
 	std::array<gui::Button::Ptr, static_cast<int>(Action::kActionCount)*2> m_binding_buttons;
 	std::array<gui::Label::Ptr, static_cast<int>(Action::kActionCount)*2> m_binding_labels;
+    gui::Label::Ptr m_mission_goal_text1;
+    gui::Label::Ptr m_mission_goal_text2;
 };
 

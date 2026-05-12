@@ -4,12 +4,29 @@
 #include "utility.hpp"
 #include "menu_options.hpp"
 #include "button.hpp"
+#include <type_traits>
+
+namespace
+{
+	template<typename Sprite>
+	const sf::Texture* GetTexturePtr(const Sprite& s)
+	{
+		if constexpr (std::is_pointer_v<decltype(s.getTexture())>)
+		{
+			return s.getTexture();
+		}
+		else
+		{
+			return &s.getTexture();
+		}
+	}
+}
 
 MenuState::MenuState(StateStack& stack, Context context) : State(stack, context), m_background_sprite(context.textures->Get(TextureID::kTitleScreen))
 {
     auto play_button = std::make_shared<gui::Button>(context);
     play_button->setPosition(sf::Vector2f(100, 300));
-    play_button->SetText("Play");
+    play_button->SetText("Training");
     play_button->SetCallback([this]()
         {
             RequestStackPop();
@@ -36,7 +53,7 @@ MenuState::MenuState(StateStack& stack, Context context) : State(stack, context)
 
     auto settings_button = std::make_shared<gui::Button>(context);
     settings_button->setPosition(sf::Vector2f(100, 450));
-    settings_button->SetText("Settings");
+    settings_button->SetText("Controls and Guide");
     settings_button->SetCallback([this]()
         {
             RequestStackPush(StateID::kSettings);
@@ -63,6 +80,20 @@ void MenuState::Draw()
 {
     sf::RenderWindow& window = *GetContext().window;
     window.setView(window.getDefaultView());
+    // Scale background to fill the current window size (desktop mode)
+    if (const sf::Texture* tex = GetTexturePtr(m_background_sprite))
+    {
+        sf::Vector2u texSize = tex->getSize();
+        if (texSize.x > 0 && texSize.y > 0)
+        {
+            sf::Vector2u winSize = window.getSize();
+            float scaleX = static_cast<float>(winSize.x) / static_cast<float>(texSize.x);
+            float scaleY = static_cast<float>(winSize.y) / static_cast<float>(texSize.y);
+            // Stretch to exactly match window dimensions
+            m_background_sprite.setScale(sf::Vector2f(scaleX, scaleY));
+            m_background_sprite.setPosition(sf::Vector2f(0.f, 0.f));
+        }
+    }
     window.draw(m_background_sprite);
     window.draw(m_gui_container);
 }

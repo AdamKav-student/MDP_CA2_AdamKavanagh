@@ -1,10 +1,30 @@
 #include "settings_state.hpp"
 #include "Utility.hpp"
+#include <type_traits>
+
+namespace
+{
+    template<typename Sprite>
+    const sf::Texture* GetTexturePtr(const Sprite& s)
+    {
+        if constexpr (std::is_pointer_v<decltype(s.getTexture())>)
+        {
+            return s.getTexture();
+        }
+        else
+        {
+            return &s.getTexture();
+        }
+    }
+}
 
 SettingsState::SettingsState(StateStack& stack, Context context)
     : State(stack, context)
     , m_gui_container()
     , m_background_sprite(context.textures->Get(TextureID::kSettingsScreen))
+    , m_mission_goal_text1(nullptr)
+    , m_mission_goal_text2(nullptr)
+
 {
     //Build key binding buttons and labels
     for (std::size_t x = 0; x < 2; ++x)
@@ -24,11 +44,32 @@ SettingsState::SettingsState(StateStack& stack, Context context)
     back_button->SetText("Back");
     back_button->SetCallback(std::bind(&SettingsState::RequestStackPop, this));
     m_gui_container.Pack(back_button);
+
+    m_mission_goal_text1 = std::make_shared<gui::Label>("Victory conditions: Score 20 kill for your team to win", *context.fonts);
+    m_mission_goal_text1->setPosition(sf::Vector2f(850.f,200.f));
+    m_gui_container.Pack(m_mission_goal_text1);
+
+    m_mission_goal_text2 = std::make_shared<gui::Label>("Mission Brief: Deplete the enemy forces armoured reseves to ensure victory ", *context.fonts);
+    m_mission_goal_text2->setPosition(sf::Vector2f(850.f, 400.f));
+    m_gui_container.Pack(m_mission_goal_text2);
 }
 
 void SettingsState::Draw()
 {
     sf::RenderWindow& window = *GetContext().window;
+    // Scale settings background to fill the current window size
+    if (const sf::Texture* tex = GetTexturePtr(m_background_sprite))
+    {
+        sf::Vector2u texSize = tex->getSize();
+        if (texSize.x > 0 && texSize.y > 0)
+        {
+            sf::Vector2u winSize = window.getSize();
+            float scaleX = static_cast<float>(winSize.x) / static_cast<float>(texSize.x);
+            float scaleY = static_cast<float>(winSize.y) / static_cast<float>(texSize.y);
+            m_background_sprite.setScale(sf::Vector2f(scaleX, scaleY));
+            m_background_sprite.setPosition(sf::Vector2f(0.f, 0.f));
+        }
+    }
     window.draw(m_background_sprite);
     window.draw(m_gui_container);
 }
