@@ -42,7 +42,7 @@ void World::SetWorldScrollCompensation(float compensation)
 void World::Update(sf::Time dt)
 {
 	//Scroll the world
-	m_camera.move(sf::Vector2f(0, m_scroll_speed * dt.asSeconds() * m_scrollspeed_compensation));
+	// m_camera.move(sf::Vector2f(0, m_scroll_speed * dt.asSeconds() * m_scrollspeed_compensation));
 
 	for (Aircraft* a : m_player_aircraft)
 	{
@@ -190,7 +190,8 @@ void World::LoadTextures()
 {
 	m_textures.Load(TextureID::kEntities, "Media/Textures/Entities.png");
     // Sprite-sheet for player models
-    m_textures.Load(TextureID::kSherman, "Media/Textures/S1.png");
+    m_textures.Load(TextureID::kSherman, "Media/Textures/Sherman B.png");
+    m_textures.Load(TextureID::kShermanTurret, "Media/Textures/Sherman T.png");
 	m_textures.Load(TextureID::kExplosion, "Media/Textures/Explosion.png");
 	m_textures.Load(TextureID::kFinishLine, "Media/Textures/FinishLine.png");
 	m_textures.Load(TextureID::kMap1, "Media/Textures/Road to caen.png");
@@ -444,37 +445,95 @@ bool MatchesCategories(SceneNode::Pair& colliders, ReceiverCategories type1, Rec
 
 void World::HandleCollisions()
 {
-	std::set<SceneNode::Pair> collision_pairs;
-	m_scene_graph.CheckSceneCollision(m_scene_graph, collision_pairs);
+    std::set<SceneNode::Pair> collision_pairs;
+    m_scene_graph.CheckSceneCollision(m_scene_graph, collision_pairs);
 
-	for (SceneNode::Pair pair : collision_pairs)
-	{
-		if (MatchesCategories(pair, ReceiverCategories::kPlayerAircraft, ReceiverCategories::kEnemyAircraft))
-		{
-			auto& player = static_cast<Aircraft&>(*pair.first);
-			auto& enemy = static_cast<Aircraft&>(*pair.second);
-			//Collision response
-			player.Damage(enemy.GetHitPoints());
-			enemy.Destroy();
-		}
-		else if (MatchesCategories(pair, ReceiverCategories::kPlayerAircraft, ReceiverCategories::kPickup))
-		{
-			auto& player = static_cast<Aircraft&>(*pair.first);
-			auto& pickup = static_cast<Pickup&>(*pair.second);
-			//Collision response
-			pickup.Apply(player);
-			pickup.Destroy();
-			player.PlayLocalSound(m_command_queue, SoundEffect::kCollectPickup);
-		}
-		else if (MatchesCategories(pair, ReceiverCategories::kPlayerAircraft, ReceiverCategories::kEnemyProjectile) || MatchesCategories(pair,ReceiverCategories::kEnemyAircraft, ReceiverCategories::kAlliedProjectile))
-		{
-			auto& aircraft = static_cast<Aircraft&>(*pair.first);
-			auto& projectile = static_cast<Projectile&>(*pair.second);
-			//Collision response
-			aircraft.Damage(projectile.GetDamage());
-			projectile.Destroy();
-		}
-	}
+    // Define a mask that targets both player and enemy aircraft (tanks)
+    unsigned int tank_mask = static_cast<unsigned int>(ReceiverCategories::kPlayerAircraft) |
+        static_cast<unsigned int>(ReceiverCategories::kEnemyAircraft);
+
+    for (SceneNode::Pair pair : collision_pairs)
+    {
+        bool is_tank1 = (pair.first->GetCategory() & tank_mask) != 0;
+        bool is_tank2 = (pair.second->GetCategory() & tank_mask) != 0;
+
+        // 1. TANK vs TANK: Block movement via coordinate pushing instead of dealing damage
+        if (is_tank1 && is_tank2)
+        {
+            auto& tank1 = static_cast<Aircraft&>(*pair.first);
+            auto& tank2 = static_cast<Aircraft&>(*pair.second);
+
+            if (tank1.IsDestroyed() || tank2.IsDestroyed())
+                continue;
+
+            sf::FloatRect bounds1 = tank1.GetBoundingRect();
+            sf::FloatRect bounds2 = tank2.GetBoundingRect();
+            std::optional<sf::FloatRect> intersection = bounds1.findIntersection(bounds2);
+
+            if (intersection)
+            {
+                // Determine bounce/push weights based on speed variables
+                float speed1 = tank1.GetMaxSpeed();
+                float speed2 = tank2.GetMaxSpeed();
+
+                float ratio1 = 0.5f;
+                float ratio2 = 0.5f;
+
+                // Static props or Training Dummies with 0 max speed should remain completely unmovable
+                if (speed1 == 0.f && speed2 != 0.f) { ratio1 = 0.f; ratio2 = 1.f; }
+                else if (speed2 == 0.f && speed1 != 0.f) { ratio1 = 1.f; ratio2 = 0.f; }
+
+                // Calculate center displacements to know which direction to push out
+                float dx = (bounds1.position.x + bounds1.size.x / 2.f) - (bounds2.position.x + bounds2.size.x / 2.f);
+                float dy = (bounds1.position.y + bounds1.size.y / 2.f) - (bounds2.position.y + bounds2.size.y / 2.f);
+
+                // Push back on shallowest axis to avoid diagonal snapping glitches
+                if (intersection->size.x < intersection->size.y)
+                {
+                    float shift = intersection->size.x;
+                    if (dx < 0) {
+                        tank1.move(sf::Vector2f(-shift * ratio1, 0.f));
+                        tank2.move(sf::Vector2f(shift * ratio2, 0.f));
+                    }
+                    else {
+                        tank1.move(sf::Vector2f(shift * ratio1, 0.f));
+                        tank2.move(sf::Vector2f(-shift * ratio2, 0.f));
+                    }
+                }
+                else
+                {
+                    float shift = intersection->size.y;
+                    if (dy < 0) {
+                        tank1.move(sf::Vector2f(0.f, -shift * ratio1));
+                        tank2.move(sf::Vector2f(0.f, shift * ratio2));
+                    }
+                    else {
+                        tank1.move(sf::Vector2f(0.f, shift * ratio1));
+                        tank2.move(sf::Vector2f(0.f, -shift * ratio2));
+                    }
+                }
+            }
+        }
+        // 2. TANK vs PICKUP
+        else if (MatchesCategories(pair, ReceiverCategories::kPlayerAircraft, ReceiverCategories::kPickup))
+        {
+            auto& player = static_cast<Aircraft&>(*pair.first);
+            auto& pickup = static_cast<Pickup&>(*pair.second);
+
+            pickup.Apply(player);
+            pickup.Destroy();
+        }
+        // 3. TANK vs PROJECTILE: Bullets/Shells still cause traditional hitpoint reduction
+        else if (MatchesCategories(pair, ReceiverCategories::kPlayerAircraft, ReceiverCategories::kEnemyProjectile) ||
+            MatchesCategories(pair, ReceiverCategories::kEnemyAircraft, ReceiverCategories::kAlliedProjectile))
+        {
+            auto& aircraft = static_cast<Aircraft&>(*pair.first);
+            auto& projectile = static_cast<Projectile&>(*pair.second);
+
+            aircraft.Damage(projectile.GetDamage());
+            projectile.Destroy();
+        }
+    }
 }
 
 void World::DestroyEntitiesOutsideView()
