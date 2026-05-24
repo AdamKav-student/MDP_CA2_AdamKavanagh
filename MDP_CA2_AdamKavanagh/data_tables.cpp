@@ -11,33 +11,17 @@ std::vector<AircraftData> InitializeAircraftData()
 {
 	std::vector<AircraftData> data(static_cast<int>(AircraftType::kAircraftCount));
 
-    // --- PLAYER: SHERMAN ---
-    data[static_cast<int>(AircraftType::kEagle)].m_hitpoints = 100;
-    data[static_cast<int>(AircraftType::kEagle)].m_speed = 200.f;
-    data[static_cast<int>(AircraftType::kEagle)].m_fire_interval = sf::seconds(1);
+	data[static_cast<int>(AircraftType::kEagle)].m_hitpoints = 100;
+	data[static_cast<int>(AircraftType::kEagle)].m_speed = 200.f;
+	data[static_cast<int>(AircraftType::kEagle)].m_fire_interval = sf::seconds(1);
 
-    // Chassis
-    data[static_cast<int>(AircraftType::kEagle)].m_texture = TextureID::kSherman;
-    data[static_cast<int>(AircraftType::kEagle)].m_texture_rect = sf::IntRect(); // Empty rect uses full image
-    // Turret
-    data[static_cast<int>(AircraftType::kEagle)].m_turret_texture = TextureID::kShermanTurret;
-    data[static_cast<int>(AircraftType::kEagle)].m_turret_texture_rect = sf::IntRect();
+    // Use sprite-sheet Sherman player model changes
+	data[static_cast<int>(AircraftType::kEagle)].m_texture = TextureID::kSherman;
+	
+	data[static_cast<int>(AircraftType::kEagle)].m_texture_rect = sf::IntRect({ 0, 0 }, { 74, 132 });
 
-    data[static_cast<int>(AircraftType::kEagle)].m_has_roll_animation = false;
-
-    // --- ENEMY: PANZER IV ---
-    data[static_cast<int>(AircraftType::kRaptor)].m_hitpoints = 20;
-    data[static_cast<int>(AircraftType::kRaptor)].m_speed = 80.f;
-    data[static_cast<int>(AircraftType::kRaptor)].m_fire_interval = sf::Time::Zero;
-
-    // Chassis
-    data[static_cast<int>(AircraftType::kRaptor)].m_texture = TextureID::kPanzer;
-    data[static_cast<int>(AircraftType::kRaptor)].m_texture_rect = sf::IntRect();
-    // Turret
-    data[static_cast<int>(AircraftType::kRaptor)].m_turret_texture = TextureID::kPanzerTurret;
-    data[static_cast<int>(AircraftType::kRaptor)].m_turret_texture_rect = sf::IntRect();
-
-    data[static_cast<int>(AircraftType::kRaptor)].m_has_roll_animation = false;
+    // Disable roll animation for the player aircraft
+	data[static_cast<int>(AircraftType::kEagle)].m_has_roll_animation = false;
 
 	data[static_cast<int>(AircraftType::kRaptor)].m_hitpoints = 20;
 	data[static_cast<int>(AircraftType::kRaptor)].m_speed = 80.f;

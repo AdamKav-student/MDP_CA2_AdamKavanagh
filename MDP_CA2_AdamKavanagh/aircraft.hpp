@@ -13,10 +13,6 @@ public:
 	Aircraft(AircraftType type, const TextureHolder& textures, const FontHolder& fonts);
 	unsigned int GetCategory() const override;
 
-    void SetTurretRotation(float rotation);
-    float GetTurretRotation() const;
-    void AimTurretTowards(sf::Vector2f target_position);
-
 	void DisablePickups();
 	uint8_t GetIdentifier();
 	void SetIdentifier(uint8_t identifier);
@@ -44,9 +40,6 @@ public:
 private:
 	virtual void DrawCurrent(sf::RenderTarget& target, sf::RenderStates states) const;
 	virtual void UpdateCurrent(sf::Time dt, CommandQueue& commands) override;
-
-    sf::Sprite m_turret_sprite;
-    float      m_turret_rotation = 0.f;
 
 	void CheckProjectileLaunch(sf::Time dt, CommandQueue& commands);
 	bool IsAllied() const;

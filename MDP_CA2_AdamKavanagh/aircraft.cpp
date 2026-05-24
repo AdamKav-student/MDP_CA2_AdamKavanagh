@@ -38,9 +38,6 @@ Aircraft::Aircraft(AircraftType type, const TextureHolder& textures, const FontH
 	: Entity(Table[static_cast<int>(type)].m_hitpoints) 
 	, m_type(type) 
 	, m_sprite(textures.Get(Table[static_cast<int>(type)].m_texture), Table[static_cast<int>(type)].m_texture_rect)
-
-    ,m_turret_sprite(textures.Get(Table[static_cast<int>(type)].m_texture))
-
 	, m_health_display(nullptr)
 	, m_missile_display(nullptr)
 	, m_distance_travelled(0.f) 
@@ -62,26 +59,7 @@ Aircraft::Aircraft(AircraftType type, const TextureHolder& textures, const FontH
 	m_explosion.SetFrameSize(sf::Vector2i(256, 256));
 	m_explosion.SetNumFrames(16);
 	m_explosion.SetDuration(sf::seconds(1));
-
-
-    // --- NEW: Grab the specific turret texture from the data table ---
-    TextureID turret_id = Table[static_cast<int>(type)].m_turret_texture;
-    m_turret_sprite.setTexture(textures.Get(turret_id), true);
-
-    // If a specific rect was provided, use it, otherwise use the full image
-    if (Table[static_cast<int>(type)].m_turret_texture_rect != sf::IntRect())
-    {
-        m_turret_sprite.setTextureRect(Table[static_cast<int>(type)].m_turret_texture_rect);
-    }
-
-    m_turret_sprite.setTexture(textures.Get(TextureID::kShermanTurret), true);
-
 	Utility::CentreOrigin(m_sprite);
-
-
-    Utility::CentreOrigin(m_turret_sprite);
-
-
 	Utility::CentreOrigin(m_explosion);
 
 	m_fire_command.category = static_cast<int>(ReceiverCategories::kScene);
@@ -281,7 +259,7 @@ void Aircraft::CreateProjectile(SceneNode& node, ProjectileType type, float x_of
 
 sf::FloatRect Aircraft::GetBoundingRect() const
 {
-    return GetWorldTransform().transformRect(m_sprite.getLocalBounds());
+	return GetWorldTransform().transformRect(m_sprite.getGlobalBounds());
 }
 
 bool Aircraft::IsMarkedForRemoval() const
@@ -310,16 +288,13 @@ void Aircraft::DrawCurrent(sf::RenderTarget& target, sf::RenderStates states) co
 		target.draw(m_explosion, states);
 	}
 	else
-    {
-        target.draw(m_sprite, states);         // 1. Draw the chassis (treads/base)
-        target.draw(m_turret_sprite, states);  // 2. Draw the turret directly on top
-    }
+	{
+		target.draw(m_sprite, states);
+	}
 }
 
 void Aircraft::UpdateCurrent(sf::Time dt, CommandQueue& commands)
 {
-        m_turret_sprite.setPosition(GetWorldPosition());
-        m_turret_sprite.setRotation(sf::degrees(m_turret_rotation));
 	if (IsDestroyed())
 	{
 		CheckPickupDrop(commands);
