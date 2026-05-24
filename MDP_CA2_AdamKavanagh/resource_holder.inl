@@ -52,11 +52,6 @@ template<typename Identifier, typename Resource>
 Resource& ResourceHolder<Identifier, Resource>::Get(Identifier id)
 {
     auto found = m_resource_map.find(id);
-    if (found == m_resource_map.end()) {
-        std::cout << "CRITICAL ERROR: Attempted to Get() an asset ID that wasn't loaded!" << std::endl;
-        // You can cast ID to int to see its enum value index
-        std::cout << "Asset Enum ID Index: " << static_cast<int>(id) << std::endl;
-    }
     assert(found != m_resource_map.end());
     return *found->second;
 }

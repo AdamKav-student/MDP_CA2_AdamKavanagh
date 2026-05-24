@@ -20,7 +20,7 @@ Application::Application()
     m_textures.Load(TextureID::kTitleScreen, "Media/Menu/Menu New.png");
     // "Media/Menu/Title Screen.png")
     m_textures.Load(TextureID::kSettingsScreen, "Media/Menu/Settings New.png");
-   
+    //"Media/Menu/Settings New.png")
     //"Media/Menu/Lobby Image.png")
 	m_textures.Load(TextureID::kButtons, "Media/Textures/Buttons.png");
 
