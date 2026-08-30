@@ -29,6 +29,8 @@ enum class TextureID
 	kMap1,
     kMap2,
 
+    kTankSheet,
+
 	kParticle,
 	kNumTextures,
 };

@@ -33,6 +33,7 @@
     <ClInclude Include="constants.hpp" />
     <ClInclude Include="container.hpp" />
     <ClInclude Include="data_tables.hpp" />
+    <ClInclude Include="debris_type.hpp" />
     <ClInclude Include="emitter_node.hpp" />
     <ClInclude Include="entity.hpp" />
     <ClInclude Include="fontID.hpp" />
@@ -74,10 +75,13 @@
     <ClInclude Include="state.hpp" />
     <ClInclude Include="stateid.hpp" />
     <ClInclude Include="statestack.hpp" />
+    <ClInclude Include="tank.hpp" />
+    <ClInclude Include="tank_type.hpp" />
     <ClInclude Include="texture_holder.hpp" />
     <ClInclude Include="texture_id.hpp" />
     <ClInclude Include="text_node.hpp" />
     <ClInclude Include="title_state.hpp" />
+    <ClInclude Include="turret_node.hpp" />
     <ClInclude Include="utility.hpp" />
     <ClInclude Include="world.hpp" />
   </ItemGroup>
@@ -95,6 +99,7 @@
     <ClCompile Include="component.cpp" />
     <ClCompile Include="container.cpp" />
     <ClCompile Include="data_tables.cpp" />
+    <ClCompile Include="debris_type.cpp" />
     <ClCompile Include="emitter_node.cpp" />
     <ClCompile Include="entity.cpp" />
     <ClCompile Include="game_over_state.cpp" />
@@ -120,9 +125,11 @@
     <ClCompile Include="sprite_node.cpp" />
     <ClCompile Include="state.cpp" />
     <ClCompile Include="statestack.cpp" />
+    <ClCompile Include="tank.cpp" />
     <ClCompile Include="texture_holder.cpp" />
     <ClCompile Include="text_node.cpp" />
     <ClCompile Include="title_state.cpp" />
+    <ClCompile Include="turret_node.cpp" />
     <ClCompile Include="utility.cpp" />
     <ClCompile Include="world.cpp" />
   </ItemGroup>
