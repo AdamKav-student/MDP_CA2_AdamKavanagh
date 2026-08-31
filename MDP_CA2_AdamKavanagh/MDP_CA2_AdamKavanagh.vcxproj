@@ -82,6 +82,7 @@
     <ClInclude Include="text_node.hpp" />
     <ClInclude Include="title_state.hpp" />
     <ClInclude Include="turret_node.hpp" />
+    <ClInclude Include="tutorial_config.hpp" />
     <ClInclude Include="utility.hpp" />
     <ClInclude Include="world.hpp" />
   </ItemGroup>

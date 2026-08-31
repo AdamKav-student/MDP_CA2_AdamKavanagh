@@ -1,41 +1,34 @@
 #pragma once
-#include "command_queue.hpp"
-#include <SFML/Window/Event.hpp>
 #include "action.hpp"
-#include <map>
-#include "command.hpp"
-#include "mission_status.hpp"
 #include "key_binding.hpp"
-#include <SFML/Network/TcpSocket.hpp>
+#include "command_queue.hpp"
+#include <map>
+#include "SFML/Window/Event.hpp"
 
-
+// Represents one local/remote client controlling one Tank. Local co-op has
+// been removed: m_movement_keys and m_turret_keys both belong to the SAME
+// player now (movement/fire vs turret rotation), rather than two separate
+// players sharing a keyboard.
 class Player
 {
 public:
-	Player(sf::TcpSocket* socket, uint8_t identifier, const KeyBinding* binding);
-	void HandleEvent(const sf::Event& event, CommandQueue& command_queue);
-	void HandleRealTimeInput(CommandQueue& command_queue);
-	void HandleRealtimeNetworkInput(CommandQueue& commands);
+    Player();
 
-	//React to events or realtime state changes recevied over the network
-	void HandleNetworkEvent(Action action, CommandQueue& commands);
-	void HandleNetworkRealtimeChange(Action action, bool action_enabled);
+    void HandleEvent(const sf::Event& event, CommandQueue& commands);
+    void HandleRealtimeInput(CommandQueue& commands);
 
-	void SetMissionStatus(MissionStatus status);
-	MissionStatus GetMissionStatus() const;
+    void AssignKey(bool turret_group, Action action, sf::Keyboard::Key key);
+    sf::Keyboard::Key GetAssignedKey(bool turret_group, Action action) const;
 
-	void DisableAllRealtimeActions(bool enable);
-	bool IsLocal() const;
+    void SetIdentifier(uint8_t identifier);
+    uint8_t GetIdentifier() const;
 
 private:
-	void InitialiseActions();
+    void InitialiseActions();
 
 private:
-	const KeyBinding* m_key_binding;
-	std::map<Action, Command> m_action_binding;
-	std::map<Action, bool> m_action_proxies;
-	MissionStatus m_current_mission_status;
-	uint8_t m_identifier;
-	sf::TcpSocket* m_socket;
+    KeyBinding					m_movement_keys;	// forward/back, hull rotate, fire
+    KeyBinding					m_turret_keys;		// turret rotate left/right
+    std::map<Action, Command>	m_action_binding;
+    uint8_t						m_identifier;
 };
-

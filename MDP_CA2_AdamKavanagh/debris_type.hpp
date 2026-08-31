@@ -1,4 +1,9 @@
 #pragma once
-class debris_type
-{};
-
+enum class DebrisType
+{
+    kAmmoCrate,
+    kDeadTree,
+    kBrokenFence,
+    kWheelWreck,
+    kDebrisTypeCount
+};

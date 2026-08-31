@@ -23,10 +23,11 @@ enum class ReceiverCategories
     kAlliesTeamProjectile = 1 << 14,
 
 	kAircraft = kPlayerAircraft | kAlliedAircraft | kEnemyAircraft,
-	kProjectile = kAlliedProjectile | kEnemyProjectile
+	kProjectile = kAlliedProjectile | kEnemyProjectile,
+
     kAnyTank = kAxisTeamTank | kAlliesTeamTank,
     kAnyTankProjectile = kAxisTeamProjectile | kAlliesTeamProjectile
 };
 
 //A message that would be sent to all aircraft would be
-//unsigned int all_aircraft = ReceiverCategories::kPlayer | ReceiverCategories::kAlloedAircraft | ReceiverCategories::kEnemyAircraft
+//unsigned int all_aircraft = ReceiverCategories::kPlayer | ReceiverCategories::kAlliedAircraft | ReceiverCategories::kEnemyAircraft
