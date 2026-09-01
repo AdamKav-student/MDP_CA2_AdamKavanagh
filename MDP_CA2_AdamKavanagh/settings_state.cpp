@@ -2,6 +2,9 @@
 #include "settings_state.hpp"
 #include "key_binding.hpp"
 #include "utility.hpp"
+#include <functional>
+#include <memory>
+#include <string>
 
 SettingsState::SettingsState(StateStack& stack, Context context)
 	: State(stack, context)

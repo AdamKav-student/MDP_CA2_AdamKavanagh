@@ -5,6 +5,8 @@
 #include "sound_node.hpp"
 #include "utility.hpp"
 #include <cmath>
+#include <memory>
+#include <string>
 
 namespace
 {

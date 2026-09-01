@@ -4,6 +4,7 @@
 #include <fstream>
 #include <sstream>
 #include <utility>
+#include <string>
 
 HighScoreTable::HighScoreTable(std::string filename)
     : m_filename(std::move(filename))

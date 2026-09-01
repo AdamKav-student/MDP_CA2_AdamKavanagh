@@ -4,6 +4,7 @@
 #include "network_protocol.hpp"
 #include "receiver_categories.hpp"
 #include <cmath>
+#include <vector>
 
 Player::Player(PacketSender* sender, uint8_t identifier, const KeyBinding* binding)
     : m_key_binding(binding)

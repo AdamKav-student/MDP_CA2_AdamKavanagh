@@ -3,6 +3,7 @@
 #include "constants.hpp"
 #include "utility.hpp"
 #include <sstream>
+#include <string>
 
 ResultState::ResultState(StateStack& stack, Context context, bool victory)
 	: State(stack, context)

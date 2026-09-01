@@ -1,5 +1,6 @@
 // Adam Kavanagh - D00247069
 #pragma once
+#include <cstddef>
 #include <cstdint>
 
 // ---------------------------------------------------------------------------

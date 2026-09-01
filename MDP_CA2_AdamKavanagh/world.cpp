@@ -13,6 +13,9 @@
 #include "posteffect.hpp"
 #include <algorithm>
 #include <set>
+#include <functional>
+#include <memory>
+#include <utility>
 
 World::World(sf::RenderTarget& output_target, FontHolder& font, SoundPlayer& sounds, bool networked)
     : m_target(output_target)
