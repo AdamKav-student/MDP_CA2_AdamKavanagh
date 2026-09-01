@@ -11,6 +11,15 @@
 namespace
 {
     const std::vector<TankData> Table = InitializeTankData();
+
+    // The hull art is drawn facing down the sprite sheet - the engine deck is
+    // at the top of each hull rect and the driver's plate at the bottom -
+    // while the game's convention is that 0 degrees faces up the screen, the
+    // way Player's drive commands and TurretNode both assume. Rotating the
+    // sprite about its centred origin reconciles the two without touching the
+    // tank's own transform, so movement, collision and the turret mount are
+    // all unaffected.
+    constexpr float kHullSpriteForwardOffsetDegrees = 180.f;
 }
 
 Tank::Tank(TankType type, const TextureHolder& textures, const FontHolder& fonts)
@@ -30,6 +39,7 @@ Tank::Tank(TankType type, const TextureHolder& textures, const FontHolder& fonts
     const TankData& data = Table[static_cast<int>(type)];
 
     Utility::CentreOrigin(m_hull_sprite);
+    m_hull_sprite.setRotation(sf::degrees(kHullSpriteForwardOffsetDegrees));
 
     m_explosion.SetFrameSize(sf::Vector2i(256, 256));
     m_explosion.SetNumFrames(16);
