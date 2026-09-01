@@ -8,9 +8,8 @@
 #include "label.hpp"
 #include <array>
 
-// Controls screen. One column of rebindable keys - the tank game has a single
-// local crew, so the second column the plane version used for local co-op is
-// gone - plus a short briefing on how the match is won.
+// Controls screen: one column of rebindable keys for the single local crew,
+// plus a short briefing on how the match is won.
 class SettingsState : public State
 {
 public:

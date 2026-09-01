@@ -112,7 +112,7 @@ so there is only one code path for actually playing the game.
 The server is **authoritative over the match, not over the simulation**. It
 owns:
 
-* the roster of connected peers and their tank identifiers,
+* the roster of connected peers and the one tank each of them drives,
 * the last reported state of every tank,
 * team scores, individual scores and the fifteen-minute match clock,
 * the respawn queue,

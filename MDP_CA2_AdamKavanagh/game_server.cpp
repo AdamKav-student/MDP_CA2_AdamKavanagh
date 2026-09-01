@@ -5,7 +5,6 @@
 #include "team_assignment.hpp"
 #include <SFML/Network/Packet.hpp>
 #include <SFML/System/Sleep.hpp>
-#include <algorithm>
 #include <iostream>
 #include <string>
 #include <memory>
@@ -52,7 +51,8 @@ GameServer::~GameServer()
 }
 
 GameServer::RemotePeer::RemotePeer()
-    : m_ready(false)
+    : m_tank_identifier(0)
+    , m_ready(false)
     , m_timed_out(false)
 {
     // Non-blocking is essential: a blocking receive would stall the whole
@@ -204,7 +204,7 @@ void GameServer::HandleIncomingConnections()
     info.m_team = AssignTeam(identifier);
     info.m_alive = true;
 
-    m_peers[m_connected_players]->m_tank_identifiers.push_back(identifier);
+    m_peers[m_connected_players]->m_tank_identifier = identifier;
 
     // Order matters: the newcomer must learn about the world that already
     // exists before anybody is told about the newcomer, otherwise it would
@@ -335,8 +335,7 @@ void GameServer::HandleIncomingPacket(sf::Packet& packet, RemotePeer& receiving_
 
         // Only the peer that owns a tank is allowed to move it. Without this
         // check a modified client could push any other player around the map.
-        const auto& owned = receiving_peer.m_tank_identifiers;
-        if (std::find(owned.begin(), owned.end(), snapshot.m_identifier) == owned.end())
+        if (receiving_peer.m_tank_identifier != snapshot.m_identifier)
         {
             break;
         }
@@ -361,10 +360,9 @@ void GameServer::HandleIncomingPacket(sf::Packet& packet, RemotePeer& receiving_
 
         if (static_cast<GameActions::Type>(action) == GameActions::kTankDestroyed)
         {
-            // Only the victim's own client reports its death, and only for a
+            // Only the victim's own client reports its death, and only for the
             // tank it owns, so each kill is counted exactly once.
-            const auto& owned = receiving_peer.m_tank_identifiers;
-            if (std::find(owned.begin(), owned.end(), subject) != owned.end())
+            if (receiving_peer.m_tank_identifier == subject)
             {
                 RegisterKill(subject, other);
             }
@@ -512,12 +510,12 @@ void GameServer::HandleDisconnections()
             continue;
         }
 
-        for (uint8_t identifier : (*itr)->m_tank_identifiers)
+        if ((*itr)->m_tank_identifier != 0)
         {
             sf::Packet packet;
-            packet << static_cast<uint8_t>(Server::PacketType::kPlayerDisconnect) << identifier;
+            packet << static_cast<uint8_t>(Server::PacketType::kPlayerDisconnect) << (*itr)->m_tank_identifier;
             SendToAll(packet);
-            m_tank_info.erase(identifier);
+            m_tank_info.erase((*itr)->m_tank_identifier);
         }
 
         --m_connected_players;

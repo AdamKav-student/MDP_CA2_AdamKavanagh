@@ -24,8 +24,7 @@ public:
 		FontHolder* fonts;
 		MusicPlayer* music;
 		SoundPlayer* sound;
-		// Single local crew - the tank game has no local co-op, so there is one
-		// set of bindings rather than the two the plane version carried.
+		// One set of bindings, for the one tank this machine drives.
 		KeyBinding* keys;
 	};
 

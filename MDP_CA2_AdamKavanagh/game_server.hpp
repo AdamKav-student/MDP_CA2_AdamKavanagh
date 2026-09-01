@@ -38,7 +38,14 @@ private:
 
         sf::TcpSocket           m_socket;
         sf::Time                m_last_packet_time;
-        std::vector<uint8_t>    m_tank_identifiers;
+
+        // Exactly one tank per connection. This was a list back when a client
+        // could ask the server for a second, locally controlled tank to share
+        // the keyboard with; the tank game has no local co-op, so a client
+        // drives one tank and nothing else. 0 means none has been assigned
+        // yet, which is safe because identifiers are handed out from 1.
+        uint8_t                 m_tank_identifier;
+
         bool                    m_ready;
         bool                    m_timed_out;
 
