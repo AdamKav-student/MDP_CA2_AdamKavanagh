@@ -1,3 +1,4 @@
+// Adam Kavanagh - D00247069
 #include "bloom_effect.hpp"
 #include "shader_types.hpp"
 

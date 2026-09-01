@@ -1,4 +1,5 @@
-     #include "Utility.hpp"
+// Adam Kavanagh - D00247069
+     #include "utility.hpp"
 #define _USE_MATH_DEFINES
 #include <math.h>
 #include <random>

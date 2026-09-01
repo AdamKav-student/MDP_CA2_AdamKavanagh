@@ -1,27 +1,27 @@
+// Adam Kavanagh - D00247069
 #include "application.hpp"
 #include "constants.hpp"
-#include "fontid.hpp"
+#include "fontID.hpp"
 #include "game_state.hpp"
 #include "title_state.hpp"
 #include "menu_state.hpp"
 #include "pause_state.hpp"
 #include "settings_state.hpp"
-#include "game_over_state.hpp"
+#include "result_state.hpp"
 #include "multiplayer_gamestate.hpp"
 
-Application::Application() 
-	: m_window(sf::VideoMode::getDesktopMode(), "Armoured Warfare:1944", sf::Style::Close)
-	, m_key_binding_1(1)
-	, m_key_binding_2(2)
-	, m_stack(State::Context(m_window, m_textures, m_fonts, m_music, m_sound, m_key_binding_1, m_key_binding_2))
+Application::Application()
+	: m_window(sf::VideoMode::getDesktopMode(), "Armoured Warfare: 1944", sf::Style::Close)
+	, m_key_binding()
+	, m_stack(State::Context(m_window, m_textures, m_fonts, m_music, m_sound, m_key_binding))
 {
 	m_window.setKeyRepeatEnabled(false);
-    m_fonts.Load(FontID::kMain, "Media/Fonts/BOMBARD_.ttf");
-    m_textures.Load(TextureID::kTitleScreen, "Media/Menu/Menu New.png");
-    // "Media/Menu/Title Screen.png")
-    m_textures.Load(TextureID::kSettingsScreen, "Media/Menu/Settings New.png");
-    //"Media/Menu/Settings New.png")
-    //"Media/Menu/Lobby Image.png")
+
+	m_fonts.Load(FontID::kMain, "Media/Fonts/BOMBARD_.ttf");
+	m_textures.Load(TextureID::kTitleScreen, "Media/Menu/Menu New.png");
+	m_textures.Load(TextureID::kSettingsScreen, "Media/Menu/Settings New.png");
+	m_textures.Load(TextureID::kVictoryScreen, "Media/Menu/Victory Image.png");
+	m_textures.Load(TextureID::kDefeatScreen, "Media/Menu/Defeat Image.png");
 	m_textures.Load(TextureID::kButtons, "Media/Textures/Buttons.png");
 
 	RegisterStates();
@@ -32,6 +32,7 @@ void Application::Run()
 {
 	sf::Clock clock;
 	sf::Time time_since_last_update = sf::Time::Zero;
+
 	while (m_window.isOpen())
 	{
 		time_since_last_update += clock.restart();
@@ -60,7 +61,6 @@ void Application::ProcessInput()
 		{
 			m_window.close();
 		}
-
 	}
 }
 
@@ -80,14 +80,12 @@ void Application::RegisterStates()
 {
 	m_stack.RegisterState<TitleState>(StateID::kTitle);
 	m_stack.RegisterState<MenuState>(StateID::kMenu);
-	m_stack.RegisterState<GameState>(StateID::kGame);
+	m_stack.RegisterState<GameState>(StateID::kTraining);
 	m_stack.RegisterState<MultiplayerGameState>(StateID::kHostGame, true);
 	m_stack.RegisterState<MultiplayerGameState>(StateID::kJoinGame, false);
 	m_stack.RegisterState<PauseState>(StateID::kPause);
 	m_stack.RegisterState<PauseState>(StateID::kNetworkPause, true);
 	m_stack.RegisterState<SettingsState>(StateID::kSettings);
-	m_stack.RegisterState<GameOverState>(StateID::kGameOver, "Mission Failed!");
-	m_stack.RegisterState<GameOverState>(StateID::kMissionSuccess, "Mission Successful!");
+	m_stack.RegisterState<ResultState>(StateID::kMissionSuccess, true);
+	m_stack.RegisterState<ResultState>(StateID::kGameOver, false);
 }
-
-

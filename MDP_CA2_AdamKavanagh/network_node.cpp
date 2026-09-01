@@ -1,30 +1,30 @@
+// Adam Kavanagh - D00247069
 #include "network_node.hpp"
+
 NetworkNode::NetworkNode()
-	: SceneNode()
-	, m_pending_actions()
+    : SceneNode()
+    , m_pending_actions()
 {
 }
 
-void NetworkNode::NotifyGameAction(GameActions::Type type, sf::Vector2f position)
+void NetworkNode::NotifyGameAction(GameActions::Type type, uint8_t subject, uint8_t other, sf::Vector2f position)
 {
-	m_pending_actions.push(GameActions::Action(type, position));
+    m_pending_actions.push(GameActions::Action(type, subject, other, position));
 }
 
 bool NetworkNode::PollGameAction(GameActions::Action& out)
 {
-	if (m_pending_actions.empty())
-	{
-		return false;
-	}
-	else
-	{
-		out = m_pending_actions.front();
-		m_pending_actions.pop();
-		return true;
-	}
+    if (m_pending_actions.empty())
+    {
+        return false;
+    }
+
+    out = m_pending_actions.front();
+    m_pending_actions.pop();
+    return true;
 }
 
-unsigned NetworkNode::GetCategory() const
+unsigned int NetworkNode::GetCategory() const
 {
-	return static_cast<int>(ReceiverCategories::kNetwork);
+    return static_cast<unsigned int>(ReceiverCategories::kNetwork);
 }

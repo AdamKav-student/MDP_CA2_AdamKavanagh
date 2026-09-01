@@ -1,4 +1,5 @@
-#include "Component.hpp"
+// Adam Kavanagh - D00247069
+#include "component.hpp"
 
 gui::Component::Component() : m_is_selected(false), m_is_active(false)
 {

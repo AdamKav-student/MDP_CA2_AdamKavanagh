@@ -1,24 +1,24 @@
+// Adam Kavanagh - D00247069
 #pragma once
 #include "action.hpp"
 #include <SFML/Window/Keyboard.hpp>
 #include <map>
+#include <vector>
 
-// One KeyBinding instance now represents one *control group* for a single
-// local player (since local co-op has been removed): a client creates two
-// of these - one for hull movement/fire, one for turret rotation - so the
-// existing per-player rebinding UI (two columns) can be reused as
-// "Movement" / "Turret" instead of "Player 1" / "Player 2".
+// Keyboard layout for the single local player. Scancodes are used rather than
+// key codes so the bindings follow the physical keys regardless of the
+// keyboard layout the machine is set to.
 class KeyBinding
 {
 public:
-    explicit KeyBinding(int control_preset); // 0 = movement defaults, 1 = turret defaults
+    KeyBinding();
 
-    void AssignKey(Action action, sf::Keyboard::Key key);
-    sf::Keyboard::Key GetAssignedKey(Action action) const;
+    void AssignKey(Action action, sf::Keyboard::Scancode key);
+    sf::Keyboard::Scancode GetAssignedKey(Action action) const;
 
-    bool CheckAction(sf::Keyboard::Key key, Action& out_action) const;
-    bool IsRealtimeAction(Action action) const;
+    bool CheckAction(sf::Keyboard::Scancode key, Action& out_action) const;
+    void GetRealtimeActions(std::vector<Action>& out_actions) const;
 
 private:
-    std::map<sf::Keyboard::Key, Action> m_key_map;
+    std::map<sf::Keyboard::Scancode, Action> m_key_map;
 };

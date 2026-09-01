@@ -1,36 +1,20 @@
+// Adam Kavanagh - D00247069
 #pragma once
 enum class TextureID
 {
-	kEagle,
-	kRaptor,
-	kAvenger,
-	kTitleScreen,
+    // Menus / UI
+    kTitleScreen,
     kSettingsScreen,
-	kButtonNormal,
-	kButtonSelected,
-	kButtonActivated,
-	kBullet,
-	kMissile,
-	kHealthRefill,
-	kMissileRefill,
-	kFireSpread,
-	kFireRate,
-	kFinishLine,
-	kEntities,
-	kButtons,
-	kExplosion,
+    kVictoryScreen,
+    kDefeatScreen,
+    kButtons,
 
-    kSherman,
-    kShermanTurret,
+    // In-game
+    kTankSheet,     // hulls, turrets and debris - Media/Textures/Sprite-Sheet.png
+    kBattlefield,   // Media/Textures/Road to Caen.png
+    kEntities,      // shell sprite
+    kExplosion,
+    kParticle,
 
-    kPanzerTurret,
-    kPanzer,
-
-	kMap1,
-    kMap2,
-
-    kTankSheet,
-
-	kParticle,
-	kNumTextures,
+    kNumTextures,
 };

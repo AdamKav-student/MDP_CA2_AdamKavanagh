@@ -1,3 +1,4 @@
+// Adam Kavanagh - D00247069
 #include "animation.hpp"
 #include <SFML/Graphics/Texture.hpp>
 #include <SFML/Graphics/RenderTarget.hpp>

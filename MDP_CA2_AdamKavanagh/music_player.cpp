@@ -1,3 +1,4 @@
+// Adam Kavanagh - D00247069
 #include "music_player.hpp"
 
 MusicPlayer::MusicPlayer()

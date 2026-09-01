@@ -1,4 +1,5 @@
-#include "PostEffect.hpp"
+// Adam Kavanagh - D00247069
+#include "posteffect.hpp"
 #include <SFML/Graphics/Shader.hpp>
 #include <SFML/Graphics/RenderTarget.hpp>
 #include <SFML/Graphics/VertexArray.hpp>

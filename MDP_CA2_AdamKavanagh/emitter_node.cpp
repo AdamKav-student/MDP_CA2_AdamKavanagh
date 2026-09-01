@@ -1,3 +1,4 @@
+// Adam Kavanagh - D00247069
 #include "emitter_node.hpp"
 
 EmitterNode::EmitterNode(ParticleType type)

@@ -1,15 +1,16 @@
+// Adam Kavanagh - D00247069
 #pragma once
 enum class StateID
 {
 	kNone,
 	kTitle,
 	kMenu,
-	kGame,
+	kTraining,      // single-tank tutorial map
 	kPause,
 	kNetworkPause,
 	kSettings,
-	kGameOver,
-	kMissionSuccess,
+	kGameOver,      // defeat screen
+	kMissionSuccess,// victory screen
 	kHostGame,
 	kJoinGame
 };

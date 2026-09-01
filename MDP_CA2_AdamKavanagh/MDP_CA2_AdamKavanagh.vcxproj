@@ -17,11 +17,17 @@
       <Configuration>Release</Configuration>
       <Platform>x64</Platform>
     </ProjectConfiguration>
+      <ClInclude Include="debris_layout.hpp" />
+    <ClInclude Include="debris_node.hpp" />
+    <ClInclude Include="high_score.hpp" />
+    <ClInclude Include="net_compression.hpp" />
+    <ClInclude Include="obstacle_collision.hpp" />
+    <ClInclude Include="result_state.hpp" />
+    <ClInclude Include="team_assignment.hpp" />
+      <ClInclude Include="packet_sender.hpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="action.hpp" />
-    <ClInclude Include="aircraft.hpp" />
-    <ClInclude Include="aircraft_type.hpp" />
     <ClInclude Include="animation.hpp" />
     <ClInclude Include="application.hpp" />
     <ClInclude Include="bloom_effect.hpp" />
@@ -37,14 +43,11 @@
     <ClInclude Include="emitter_node.hpp" />
     <ClInclude Include="entity.hpp" />
     <ClInclude Include="fontID.hpp" />
-    <ClInclude Include="game_over_state.hpp" />
     <ClInclude Include="game_server.hpp" />
     <ClInclude Include="game_state.hpp" />
     <ClInclude Include="key_binding.hpp" />
     <ClInclude Include="label.hpp" />
-    <ClInclude Include="menu_options.hpp" />
     <ClInclude Include="menu_state.hpp" />
-    <ClInclude Include="mission_status.hpp" />
     <ClInclude Include="multiplayer_gamestate.hpp" />
     <ClInclude Include="music_player.hpp" />
     <ClInclude Include="music_themes.hpp" />
@@ -54,8 +57,6 @@
     <ClInclude Include="particletype.hpp" />
     <ClInclude Include="particle_node.hpp" />
     <ClInclude Include="pause_state.hpp" />
-    <ClInclude Include="pickup.hpp" />
-    <ClInclude Include="pickup_type.hpp" />
     <ClInclude Include="player.hpp" />
     <ClInclude Include="posteffect.hpp" />
     <ClInclude Include="projectile.hpp" />
@@ -90,7 +91,6 @@
     <None Include="resource_holder.inl" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="aircraft.cpp" />
     <ClCompile Include="animation.cpp" />
     <ClCompile Include="application.cpp" />
     <ClCompile Include="bloom_effect.cpp" />
@@ -100,10 +100,8 @@
     <ClCompile Include="component.cpp" />
     <ClCompile Include="container.cpp" />
     <ClCompile Include="data_tables.cpp" />
-    <ClCompile Include="debris_type.cpp" />
     <ClCompile Include="emitter_node.cpp" />
     <ClCompile Include="entity.cpp" />
-    <ClCompile Include="game_over_state.cpp" />
     <ClCompile Include="game_server.cpp" />
     <ClCompile Include="game_state.cpp" />
     <ClCompile Include="key_binding.cpp" />
@@ -115,7 +113,6 @@
     <ClCompile Include="network_node.cpp" />
     <ClCompile Include="particle_node.cpp" />
     <ClCompile Include="pause_state.cpp" />
-    <ClCompile Include="pickup.cpp" />
     <ClCompile Include="player.cpp" />
     <ClCompile Include="posteffect.cpp" />
     <ClCompile Include="projectile.cpp" />
@@ -133,6 +130,11 @@
     <ClCompile Include="turret_node.cpp" />
     <ClCompile Include="utility.cpp" />
     <ClCompile Include="world.cpp" />
+      <ClCompile Include="debris_layout.cpp" />
+    <ClCompile Include="debris_node.cpp" />
+    <ClCompile Include="high_score.cpp" />
+    <ClCompile Include="obstacle_collision.cpp" />
+    <ClCompile Include="result_state.cpp" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>18.0</VCProjectVersion>
@@ -238,11 +240,14 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <LanguageStandard>stdcpp20</LanguageStandard>
+      <LanguageStandard>stdcpp23</LanguageStandard>
+      <AdditionalIncludeDirectories>$(ProjectDir)/SFML-3.0.1/include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
+      <AdditionalLibraryDirectories>$(ProjectDir)/SFML-3.0.1/lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>sfml-system.lib;sfml-window.lib;sfml-graphics.lib;sfml-audio.lib;sfml-network.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

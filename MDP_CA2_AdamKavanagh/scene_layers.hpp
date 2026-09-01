@@ -1,9 +1,10 @@
+// Adam Kavanagh - D00247069
 #pragma once
 
 enum class SceneLayers
 {
-	kBackground,
-	kLowerAir,
-	kUpperAir,
-	kLayerCount
+    kBackground,    // map art
+    kGround,        // debris, particle systems
+    kEntities,      // tanks and shells
+    kLayerCount
 };

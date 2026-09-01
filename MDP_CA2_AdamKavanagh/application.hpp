@@ -1,8 +1,7 @@
+// Adam Kavanagh - D00247069
 #pragma once
-#include <SFML/System/Clock.hpp>
 #include <SFML/Graphics/RenderWindow.hpp>
-#include "player.hpp"
-#include "resource_holder.hpp"
+#include <SFML/System/Clock.hpp>
 #include "resource_identifiers.hpp"
 #include "statestack.hpp"
 #include "music_player.hpp"
@@ -27,12 +26,10 @@ private:
 	TextureHolder m_textures;
 	FontHolder m_fonts;
 
-	StateStack m_stack;
-
 	MusicPlayer m_music;
 	SoundPlayer m_sound;
 
-	KeyBinding m_key_binding_1;
-	KeyBinding m_key_binding_2;
-};
+	KeyBinding m_key_binding;
 
+	StateStack m_stack;
+};

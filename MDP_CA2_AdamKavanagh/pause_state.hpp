@@ -1,8 +1,9 @@
+// Adam Kavanagh - D00247069
 #pragma once
-#include "State.hpp"
+#include "state.hpp"
 #include <SFML/Graphics/Sprite.hpp>
 #include <SFML/Graphics/Text.hpp>
-#include "Container.hpp"
+#include "container.hpp"
 
 class PauseState : public State
 {

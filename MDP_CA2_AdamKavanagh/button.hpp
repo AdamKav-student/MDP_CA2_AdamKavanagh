@@ -1,3 +1,4 @@
+// Adam Kavanagh - D00247069
 #pragma once
 #include "component.hpp"
 #include "resource_identifiers.hpp"

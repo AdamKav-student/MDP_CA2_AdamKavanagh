@@ -1,3 +1,4 @@
+// Adam Kavanagh - D00247069
 #pragma once
 #include "posteffect.hpp"
 #include "resource_identifiers.hpp"

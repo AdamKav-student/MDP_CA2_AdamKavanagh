@@ -1,175 +1,240 @@
+// Adam Kavanagh - D00247069
 #include "tank.hpp"
 #include "data_tables.hpp"
-#include "texture_id.hpp"
+#include "projectile.hpp"
+#include "sound_node.hpp"
 #include "utility.hpp"
+#include <cmath>
 
 namespace
 {
-	const std::vector<TankData> Table = InitializeTankData();
+    const std::vector<TankData> Table = InitializeTankData();
 }
 
 Tank::Tank(TankType type, const TextureHolder& textures, const FontHolder& fonts)
-	: Entity(Table[static_cast<int>(type)].m_hitpoints)
-	, m_type(type)
-	, m_identifier(0)
-	, m_hull_sprite(textures.Get(Table[static_cast<int>(type)].m_texture), Table[static_cast<int>(type)].m_hull_rect)
-	, m_turret(nullptr)
-	, m_health_display(nullptr)
-	, m_wants_to_fire(false)
-	, m_is_firing(false)
-	, m_fire_countdown(sf::Time::Zero)
-	, m_show_wreck(true)
+    : Entity(Table[static_cast<int>(type)].m_hitpoints)
+    , m_type(type)
+    , m_identifier(0)
+    , m_hull_sprite(textures.Get(Table[static_cast<int>(type)].m_texture), Table[static_cast<int>(type)].m_hull_rect)
+    , m_turret(nullptr)
+    , m_health_display(nullptr)
+    , m_explosion(textures.Get(TextureID::kExplosion))
+    , m_is_firing(false)
+    , m_fire_countdown(sf::Time::Zero)
+    , m_is_marked_for_removal(false)
+    , m_show_explosion(true)
+    , m_explosion_began(false)
 {
-	Utility::CentreOrigin(m_hull_sprite);
+    const TankData& data = Table[static_cast<int>(type)];
 
-	std::unique_ptr<TurretNode> turret(new TurretNode(
-		textures.Get(Table[static_cast<int>(type)].m_texture),
-		Table[static_cast<int>(type)].m_turret_rect,
-		Table[static_cast<int>(type)].m_turret_pivot));
-	m_turret = turret.get();
-	AttachChild(std::move(turret));
-	// No further setup needed: the turret already defaults to "aligned with
-	// hull" (see TurretNode's constructor) and will only move if
-	// RotateTurretBy() is called from arrow-key input.
+    Utility::CentreOrigin(m_hull_sprite);
 
-	std::string health_text = "";
-	std::unique_ptr<TextNode> health_display(new TextNode(fonts, health_text));
-	health_display->setPosition(sf::Vector2f(0.f, 70.f));
-	m_health_display = health_display.get();
-	AttachChild(std::move(health_display));
+    m_explosion.SetFrameSize(sf::Vector2i(256, 256));
+    m_explosion.SetNumFrames(16);
+    m_explosion.SetDuration(sf::seconds(1.f));
+    Utility::CentreOrigin(m_explosion);
 
-	UpdateTexts();
+    std::unique_ptr<TurretNode> turret(new TurretNode(
+        textures.Get(data.m_texture), data.m_turret_rect, data.m_turret_pivot));
+    m_turret = turret.get();
+    AttachChild(std::move(turret));
+
+    // The shell is spawned into the scene graph rather than as a child of the
+    // tank, so that it keeps flying after the tank that fired it is destroyed.
+    m_fire_command.category = static_cast<unsigned int>(ReceiverCategories::kScene);
+    m_fire_command.action = [this, &textures](SceneNode& node, sf::Time)
+        {
+            CreateShell(node, textures);
+        };
+
+    std::string health_text = "";
+    std::unique_ptr<TextNode> health_display(new TextNode(fonts, health_text));
+    health_display->setPosition(sf::Vector2f(0.f, 80.f));
+    m_health_display = health_display.get();
+    AttachChild(std::move(health_display));
+
+    UpdateTexts();
 }
 
 unsigned int Tank::GetCategory() const
 {
-	switch (Table[static_cast<int>(m_type)].m_team)
-	{
-	case TeamID::kAxis:
-		return static_cast<unsigned int>(ReceiverCategories::kAxisTeamTank);
-	case TeamID::kAllies:
-		return static_cast<unsigned int>(ReceiverCategories::kAlliesTeamTank);
-	default:
-		return static_cast<unsigned int>(ReceiverCategories::kNone);
-	}
+    return GetTeam() == TeamID::kAllies
+        ? static_cast<unsigned int>(ReceiverCategories::kAlliesTank)
+        : static_cast<unsigned int>(ReceiverCategories::kAxisTank);
 }
 
 TeamID Tank::GetTeam() const
 {
-	return Table[static_cast<int>(m_type)].m_team;
+    return Table[static_cast<int>(m_type)].m_team;
+}
+
+TankType Tank::GetTankType() const
+{
+    return m_type;
 }
 
 uint8_t Tank::GetIdentifier() const
 {
-	return m_identifier;
+    return m_identifier;
 }
 
 void Tank::SetIdentifier(uint8_t identifier)
 {
-	m_identifier = identifier;
+    m_identifier = identifier;
 }
 
 float Tank::GetMaxSpeed() const
 {
-	return Table[static_cast<int>(m_type)].m_speed;
+    return Table[static_cast<int>(m_type)].m_speed;
+}
+
+float Tank::GetReverseFactor() const
+{
+    return Table[static_cast<int>(m_type)].m_reverse_factor;
+}
+
+float Tank::GetHullRotateSpeed() const
+{
+    return Table[static_cast<int>(m_type)].m_hull_rotate_speed;
+}
+
+float Tank::GetTurretRotateSpeed() const
+{
+    return Table[static_cast<int>(m_type)].m_turret_rotate_speed;
 }
 
 void Tank::RotateTurretBy(float delta_degrees)
 {
-	m_turret->RotateBy(delta_degrees);
+    m_turret->RotateBy(delta_degrees);
 }
 
-float Tank::GetTurretLocalRotationDegrees() const
+float Tank::GetTurretRotationDegrees() const
 {
-	return m_turret->GetLocalRotationDegrees();
+    return m_turret->GetLocalRotationDegrees();
 }
 
-void Tank::SetTurretLocalRotationDegrees(float degrees)
+void Tank::SetTurretRotationDegrees(float degrees)
 {
-	m_turret->SetLocalRotationDegrees(degrees);
-}
-
-sf::Vector2f Tank::GetMuzzleWorldPosition() const
-{
-	return m_turret->GetMuzzleWorldPosition();
+    m_turret->SetLocalRotationDegrees(degrees);
 }
 
 void Tank::Fire()
 {
-	m_wants_to_fire = true;
-}
-
-bool Tank::IsFiring() const
-{
-	return m_is_firing;
+    // Only latches the intent - the fire-rate cooldown in
+    // CheckProjectileLaunch decides whether a shell actually leaves the
+    // barrel, so holding the key does not spawn a shell every frame.
+    if (Table[static_cast<int>(m_type)].m_fire_interval != sf::Time::Zero)
+    {
+        m_is_firing = true;
+    }
 }
 
 void Tank::UpdateTexts()
 {
-	if (IsDestroyed())
-	{
-		m_health_display->SetString("");
-	}
-	else
-	{
-		m_health_display->SetString(std::to_string(GetHitPoints()) + "HP");
-	}
-	// Keep health text upright in world coordinates
-	m_health_display->setRotation(sf::degrees(-getRotation().asDegrees()));
-}
+    if (IsDestroyed())
+    {
+        m_health_display->SetString("");
+        return;
+    }
 
-// Re-added (see tank.hpp comment) - needed for accessibility, not
-// behavior; SceneNode's own default already does the right thing.
-bool Tank::IsMarkedForRemoval() const
-{
-	return IsDestroyed();
+    m_health_display->SetString(std::to_string(GetHitPoints()) + " HP");
+    // Keep the label upright in world space no matter which way the hull faces.
+    m_health_display->setRotation(sf::degrees(-getRotation().asDegrees()));
 }
 
 sf::FloatRect Tank::GetBoundingRect() const
 {
-	return GetWorldTransform().transformRect(m_hull_sprite.getGlobalBounds());
+    return GetWorldTransform().transformRect(m_hull_sprite.getGlobalBounds());
+}
+
+bool Tank::IsMarkedForRemoval() const
+{
+    // Stay in the scene while the explosion plays out, then disappear.
+    return IsDestroyed() && (m_explosion.IsFinished() || !m_show_explosion);
 }
 
 void Tank::Remove()
 {
-	Entity::Remove();
-	m_show_wreck = false;
+    Entity::Remove();
+    m_show_explosion = false;
+}
+
+void Tank::PlayLocalSound(CommandQueue& commands, SoundEffect effect)
+{
+    sf::Vector2f world_position = GetWorldPosition();
+
+    Command command;
+    command.category = static_cast<unsigned int>(ReceiverCategories::kSoundEffect);
+    command.action = DerivedAction<SoundNode>(
+        [effect, world_position](SoundNode& node, sf::Time)
+        {
+            node.PlaySound(effect, world_position);
+        });
+
+    commands.Push(command);
 }
 
 void Tank::DrawCurrent(sf::RenderTarget& target, sf::RenderStates states) const
 {
-	target.draw(m_hull_sprite, states);
+    if (IsDestroyed() && m_show_explosion)
+    {
+        target.draw(m_explosion, states);
+    }
+    else
+    {
+        target.draw(m_hull_sprite, states);
+    }
 }
 
 void Tank::UpdateCurrent(sf::Time dt, CommandQueue& commands)
 {
-	if (IsDestroyed())
-	{
-		return;
-	}
+    if (IsDestroyed())
+    {
+        m_explosion.Update(dt);
 
-	Entity::UpdateCurrent(dt, commands);
-	UpdateTexts();
+        if (!m_explosion_began)
+        {
+            SoundEffect effect = (Utility::RandomInt(2) == 0) ? SoundEffect::kExplosion1 : SoundEffect::kExplosion2;
+            PlayLocalSound(commands, effect);
+            m_explosion_began = true;
+        }
+        return;
+    }
 
-	// Deliberately nothing turret-related here: the turret is a normal
-	// child SceneNode, so it already rotates along with the hull for free.
-	// Its rotation only changes when RotateTurretBy() is called elsewhere
-	// (arrow-key input in Player, or SetTurretLocalRotationDegrees() when
-	// applying network state).
+    CheckProjectileLaunch(dt, commands);
+    Entity::UpdateCurrent(dt, commands);
+    UpdateTexts();
+}
 
-	// Fire-rate cooldown: Fire() (called every frame the fire key is held,
-	// via Player's realtime input) only sets m_wants_to_fire - the actual
-	// shot is gated here so holding the key doesn't spawn a shell every
-	// tick. IsFiring() is true for exactly the one frame a shot is
-	// released; World should spawn a shell then, on that frame only.
-	if (m_fire_countdown > sf::Time::Zero)
-		m_fire_countdown -= dt;
+void Tank::CheckProjectileLaunch(sf::Time dt, CommandQueue& commands)
+{
+    if (m_fire_countdown > sf::Time::Zero)
+    {
+        m_fire_countdown -= dt;
+    }
 
-	m_is_firing = false;
-	if (m_wants_to_fire && m_fire_countdown <= sf::Time::Zero)
-	{
-		m_is_firing = true;
-		m_fire_countdown += Table[static_cast<int>(m_type)].m_fire_interval;
-	}
-	m_wants_to_fire = false;
+    if (m_is_firing && m_fire_countdown <= sf::Time::Zero)
+    {
+        commands.Push(m_fire_command);
+        PlayLocalSound(commands, GetTeam() == TeamID::kAllies ? SoundEffect::kAlliedGunfire : SoundEffect::kEnemyGunfire);
+        m_fire_countdown += Table[static_cast<int>(m_type)].m_fire_interval;
+    }
+
+    m_is_firing = false;
+}
+
+void Tank::CreateShell(SceneNode& node, const TextureHolder& textures) const
+{
+    ProjectileType type = GetTeam() == TeamID::kAllies ? ProjectileType::kAlliesShell : ProjectileType::kAxisShell;
+
+    std::unique_ptr<Projectile> shell(new Projectile(type, textures));
+
+    // The shell leaves the muzzle travelling along the turret's world
+    // direction rather than the hull's, so aiming actually matters.
+    shell->setPosition(m_turret->GetMuzzleWorldPosition());
+    shell->setRotation(sf::degrees(m_turret->GetBarrelRotationDegrees()));
+    shell->SetVelocity(m_turret->GetBarrelDirection() * shell->GetMaxSpeed());
+    shell->SetOwnerIdentifier(m_identifier);
+
+    node.AttachChild(std::move(shell));
 }

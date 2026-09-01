@@ -1,3 +1,4 @@
+// Adam Kavanagh - D00247069
 #pragma once
 #include "scene_node.hpp"
 #include "particletype.hpp"

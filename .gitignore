@@ -361,3 +361,6 @@ MigrationBackup/
 
 # Fody - auto-generated XML schema
 FodyWeavers.xsd
+# Generated at runtime by the game server / client
+MDP_CA2_AdamKavanagh/high_scores.txt
+high_scores.txt

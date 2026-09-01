@@ -1,4 +1,5 @@
-#include "Statestack.hpp"
+// Adam Kavanagh - D00247069
+#include "statestack.hpp"
 
 StateStack::PendingChange::PendingChange(StackActions action, StateID state_id) : action(action), state_id(state_id)
 {
@@ -66,10 +67,21 @@ void StateStack::ApplyPendingChanges()
 			m_stack.emplace_back(CreateState(change.state_id));
 			break;
 		case StackActions::kPop:
+			// OnDestroy first: a multiplayer state uses it to send its quit
+			// packet while its socket is still alive.
+			m_stack.back()->OnDestroy();
 			m_stack.pop_back();
+			if (!m_stack.empty())
+			{
+				m_stack.back()->OnActivate();
+			}
 			break;
 			//TODO should we clear the pending list when queueing up clear
 		case StackActions::kClear:
+			for (State::Ptr& state : m_stack)
+			{
+				state->OnDestroy();
+			}
 			m_stack.clear();
 			break;
 		}

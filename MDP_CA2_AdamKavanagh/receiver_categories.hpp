@@ -1,33 +1,23 @@
+// Adam Kavanagh - D00247069
 #pragma once
+
+// Command routing / collision categories. Tanks and shells are tagged by team
+// so that HandleCollisions() can express "an Axis shell hit an Allied tank"
+// without downcasting and comparing teams by hand.
 enum class ReceiverCategories
 {
-	kNone = 0,
-	kScene = 1 << 0,
-	kPlayerAircraft = 1 << 1,
-	kAlliedAircraft = 1 << 2,
-	kEnemyAircraft = 1 << 3, 
-	kAlliedProjectile = 1 << 4,
-	kEnemyProjectile = 1 << 5,
-	kPickup = 1 << 6,
-	kParticleSystem = 1 << 7,
-	kSoundEffect = 1 << 8,
-	kNetwork = 1 << 9,
+    kNone = 0,
+    kScene = 1 << 0,
+    kParticleSystem = 1 << 1,
+    kSoundEffect = 1 << 2,
+    kNetwork = 1 << 3,
+    kObstacle = 1 << 4,
 
-    kObstacle = 1 << 10,
+    kAlliesTank = 1 << 5,
+    kAxisTank = 1 << 6,
+    kAlliesProjectile = 1 << 7,
+    kAxisProjectile = 1 << 8,
 
-    // Tank conversion: team-tagged categories so collision/damage logic can
-    // tell friend from foe.
-    kAxisTeamTank = 1 << 11,
-    kAlliesTeamTank = 1 << 12,
-    kAxisTeamProjectile = 1 << 13,
-    kAlliesTeamProjectile = 1 << 14,
-
-	kAircraft = kPlayerAircraft | kAlliedAircraft | kEnemyAircraft,
-	kProjectile = kAlliedProjectile | kEnemyProjectile,
-
-    kAnyTank = kAxisTeamTank | kAlliesTeamTank,
-    kAnyTankProjectile = kAxisTeamProjectile | kAlliesTeamProjectile
+    kAnyTank = kAlliesTank | kAxisTank,
+    kAnyProjectile = kAlliesProjectile | kAxisProjectile
 };
-
-//A message that would be sent to all aircraft would be
-//unsigned int all_aircraft = ReceiverCategories::kPlayer | ReceiverCategories::kAlliedAircraft | ReceiverCategories::kEnemyAircraft

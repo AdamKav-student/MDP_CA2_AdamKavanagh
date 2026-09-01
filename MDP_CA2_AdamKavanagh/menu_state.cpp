@@ -1,8 +1,8 @@
+// Adam Kavanagh - D00247069
 #include "menu_state.hpp"
 #include "fontID.hpp"
 #include <SFML/Graphics/Text.hpp>
 #include "utility.hpp"
-#include "menu_options.hpp"
 #include "button.hpp"
 #include <type_traits>
 
@@ -30,7 +30,7 @@ MenuState::MenuState(StateStack& stack, Context context) : State(stack, context)
     play_button->SetCallback([this]()
         {
             RequestStackPop();
-            RequestStackPush(StateID::kGame);
+            RequestStackPush(StateID::kTraining);
         });
 
     auto host_play_button = std::make_shared<gui::Button>(context);

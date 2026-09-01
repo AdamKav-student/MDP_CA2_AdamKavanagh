@@ -1,82 +1,119 @@
+// Adam Kavanagh - D00247069
 #pragma once
-#include <SFML/System/Vector2.hpp>
-#include <SFML/Network/TcpSocket.hpp>
+#include "net_compression.hpp"
+#include "tank_type.hpp"
+#include "high_score.hpp"
 #include <SFML/Network/TcpListener.hpp>
+#include <SFML/Network/Packet.hpp>
+#include <SFML/Network/TcpSocket.hpp>
 #include <SFML/System/Clock.hpp>
-#include <SFML/Graphics/Rect.hpp>
-#include <thread>
+#include <SFML/System/Vector2.hpp>
+#include <atomic>
+#include <deque>
 #include <cstdint>
 #include <map>
+#include <memory>
+#include <thread>
+#include <vector>
 
+// The authoritative match host. It runs on its own thread inside the hosting
+// client's process, owns the scoreboard, the match clock and the respawn
+// queue, and relays player input and compressed tank snapshots between every
+// connected client over TCP.
+//
+// It deliberately does NOT simulate the world: tank movement is run on the
+// clients, which report their own tank's state 20 times a second. That keeps
+// the server cheap enough to sit alongside a running game client, at the cost
+// of trusting clients about their own position - see DOCUMENTATION.md.
 class GameServer
 {
 public:
-	explicit GameServer(sf::Vector2f battlefield_size);
-	~GameServer();
-	void NotifyPlayerSpawn(uint8_t aircraft_identifier);
-	void NotifyPlayerRealtimeChange(uint8_t aircraft_identifier, uint8_t action, bool action_enabled);
-	void NotifyPlayerEvent(uint8_t aircraft_identifier, uint8_t action);
+    GameServer();
+    ~GameServer();
 
 private:
-	struct RemotePeer
-	{
-		RemotePeer();
-		sf::TcpSocket m_socket;
-		sf::Time m_last_packet_time;
-		std::vector<uint8_t> m_aircraft_identifiers;
-		bool m_ready;
-		bool m_timed_out;
-	};
+    struct RemotePeer
+    {
+        RemotePeer();
 
-	struct AircraftInfo
-	{
-		sf::Vector2f m_position;
-		uint8_t m_hitpoints;
-		uint8_t m_missile_ammo;
-		std::map<uint8_t, bool> m_real_time_actions;
-	};
+        sf::TcpSocket           m_socket;
+        sf::Time                m_last_packet_time;
+        std::vector<uint8_t>    m_tank_identifiers;
+        bool                    m_ready;
+        bool                    m_timed_out;
 
-	typedef std::unique_ptr<RemotePeer> PeerPtr;
+        // Outgoing packets that TCP has not accepted yet. A non-blocking
+        // socket can report Partial when the kernel send buffer fills up -
+        // with 15 clients being broadcast to 20 times a second that is a
+        // question of when, not if - and SFML requires the very same packet
+        // object to be handed back to send() until it completes.
+        std::deque<sf::Packet>  m_send_queue;
+    };
 
-private:
-	void SetListening(bool enable);
-	void ExecutionThread();
-	void Tick();
-	sf::Time Now() const;
+    struct TankInfo
+    {
+        TankSnapshot    m_snapshot;         // last state reported by its owner
+        TankSnapshot    m_last_broadcast;   // what the clients were last told
+        TeamID          m_team = TeamID::kNone;
+        uint16_t        m_score = 0;        // kills
+        bool            m_alive = true;
+        sf::Time        m_respawn_at = sf::Time::Zero;
+        bool            m_ever_broadcast = false;
+    };
 
-	void HandleIncomingPackets();
-	void HandleIncomingPackets(sf::Packet& packet, RemotePeer& receiving_peer, bool& detected_timeout);
-
-	void HandleIncomingConnections();
-	void HandleDisconnections();
-
-	void InformWorldState(sf::TcpSocket& socket);
-	void BroadcastMessage(const std::string& message);
-	void SendToAll(sf::Packet& packet);
-	void UpdateClientState();
+    typedef std::unique_ptr<RemotePeer> PeerPtr;
 
 private:
-	std::thread m_thread;
-	sf::Clock m_clock;
-	sf::TcpListener m_listener_socket;
-	bool m_listening_state;
-	sf::Time m_client_timeout;
+    void SetListening(bool enable);
+    void ExecutionThread();
+    void Tick();
+    sf::Time Now() const;
 
-	std::size_t m_max_connected_players;
-	std::size_t m_connected_players;
+    void HandleIncomingConnections();
+    void HandleIncomingPackets();
+    void HandleIncomingPacket(sf::Packet& packet, RemotePeer& receiving_peer, bool& detected_timeout);
+    void HandleDisconnections();
 
-	float m_world_height;
-	sf::FloatRect m_battlefield_rect;
-	float m_battlefield_scrollspeed;
+    void InformWorldState(RemotePeer& peer);
+    void BroadcastMessage(const std::string& message);
+    void SendToAll(sf::Packet& packet);
+    void QueuePacket(RemotePeer& peer, const sf::Packet& packet);
+    void FlushSendQueues();
 
-	std::size_t m_aircraft_count;
-	std::map<uint8_t, AircraftInfo> m_aircraft_info;
+    void BroadcastChangedTankStates();
+    void BroadcastScores();
+    void ProcessRespawns();
+    void RegisterKill(uint8_t victim, uint8_t killer);
+    void EndMatch(TeamID winning_team);
 
-	std::vector<PeerPtr> m_peers;
-	uint8_t m_aircraft_identifier_counter;
-	bool m_waiting_thread_end;
+    sf::Vector2f GetSpawnPosition(uint8_t identifier) const;
+    uint16_t GetSecondsRemaining() const;
 
-	sf::Time m_last_spawn_time;
-	sf::Time m_time_for_next_spawn;
+private:
+    // Started at the very end of the constructor, never in the initialiser
+    // list: the thread touches the listener and the peer list immediately, so
+    // it must not be able to run before those are constructed.
+    std::thread         m_thread;
+    std::atomic<bool>   m_waiting_thread_end;
+
+    sf::Clock           m_clock;
+    sf::TcpListener     m_listener_socket;
+    bool                m_listening_state;
+    sf::Time            m_client_timeout;
+
+    std::size_t         m_max_connected_players;
+    std::size_t         m_connected_players;
+
+    std::vector<PeerPtr>            m_peers;
+    std::map<uint8_t, TankInfo>     m_tank_info;
+    uint8_t                         m_tank_identifier_counter;
+
+    uint16_t            m_allies_score;
+    uint16_t            m_axis_score;
+    sf::Time            m_match_start_time;
+    bool                m_match_over;
+
+    sf::Time            m_last_score_broadcast;
+
+    HighScoreTable      m_high_scores;
 };
-

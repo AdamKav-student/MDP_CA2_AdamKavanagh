@@ -1,4 +1,5 @@
-#include "Entity.hpp"
+// Adam Kavanagh - D00247069
+#include "entity.hpp"
 #include "command_queue.hpp"
 
 Entity::Entity(int hitpoints) :m_hitpoints(hitpoints)

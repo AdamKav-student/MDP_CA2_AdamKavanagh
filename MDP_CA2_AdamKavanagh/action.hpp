@@ -1,4 +1,9 @@
+// Adam Kavanagh - D00247069
 #pragma once
+
+// One action per thing a tank crew can do. The values are sent over the
+// network as a single byte (see network_protocol.hpp), so the order matters:
+// never reorder without bumping both ends.
 enum class Action
 {
     kMoveForward,
@@ -11,8 +16,9 @@ enum class Action
     kActionCount
 };
 
-// True for actions that should be applied continuously while the key is
-// held (polled every frame via KeyBinding::IsRealtimeAction).
+// Every tank action is continuous ("held down") rather than one-shot. Keeping
+// this predicate means the realtime/event split in Player and in the protocol
+// still works if a one-shot action is added later.
 inline bool IsRealtimeAction(Action action)
 {
     switch (action)

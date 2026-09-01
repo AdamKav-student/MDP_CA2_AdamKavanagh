@@ -1,3 +1,4 @@
+// Adam Kavanagh - D00247069
 #include "scene_node.hpp"
 #include "utility.hpp"
 

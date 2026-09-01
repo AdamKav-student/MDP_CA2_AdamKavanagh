@@ -1,6 +1,7 @@
+// Adam Kavanagh - D00247069
 #pragma once
 #include "scene_node.hpp"
-#include "ParticleType.hpp"
+#include "particletype.hpp"
 #include "particle_node.hpp"
 
 class EmitterNode : public SceneNode

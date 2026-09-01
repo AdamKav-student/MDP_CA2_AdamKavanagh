@@ -1,58 +1,69 @@
+// Adam Kavanagh - D00247069
 #include "key_binding.hpp"
 
-KeyBinding::KeyBinding(int control_preset)
+KeyBinding::KeyBinding()
 {
-    if (control_preset == 0)
-    {
-        // Movement / fire defaults
-        m_key_map[sf::Keyboard::Key::W] = Action::kMoveForward;
-        m_key_map[sf::Keyboard::Key::S] = Action::kMoveBackward;
-        m_key_map[sf::Keyboard::Key::A] = Action::kRotateHullLeft;
-        m_key_map[sf::Keyboard::Key::D] = Action::kRotateHullRight;
-        m_key_map[sf::Keyboard::Key::Space] = Action::kFire;
-    }
-    else
-    {
-        // Turret defaults
-        m_key_map[sf::Keyboard::Key::Left] = Action::kTurretLeft;
-        m_key_map[sf::Keyboard::Key::Right] = Action::kTurretRight;
-    }
+    // WASD drives the hull, the arrow keys traverse the turret independently,
+    // and space fires. Driving and aiming being on separate hands is what
+    // makes a turret worth having.
+    m_key_map[sf::Keyboard::Scancode::W] = Action::kMoveForward;
+    m_key_map[sf::Keyboard::Scancode::S] = Action::kMoveBackward;
+    m_key_map[sf::Keyboard::Scancode::A] = Action::kRotateHullLeft;
+    m_key_map[sf::Keyboard::Scancode::D] = Action::kRotateHullRight;
+    m_key_map[sf::Keyboard::Scancode::Left] = Action::kTurretLeft;
+    m_key_map[sf::Keyboard::Scancode::Right] = Action::kTurretRight;
+    m_key_map[sf::Keyboard::Scancode::Space] = Action::kFire;
 }
 
-void KeyBinding::AssignKey(Action action, sf::Keyboard::Key key)
+void KeyBinding::AssignKey(Action action, sf::Keyboard::Scancode key)
 {
-    // Remove any existing binding of this key (avoid one key firing two actions)
-    for (auto it = m_key_map.begin(); it != m_key_map.end(); )
+    // Drop any previous binding for this action so a key is never left
+    // triggering two things at once.
+    for (auto itr = m_key_map.begin(); itr != m_key_map.end(); )
     {
-        if (it->second == action)
-            it = m_key_map.erase(it);
+        if (itr->second == action)
+        {
+            itr = m_key_map.erase(itr);
+        }
         else
-            ++it;
+        {
+            ++itr;
+        }
     }
     m_key_map[key] = action;
 }
 
-sf::Keyboard::Key KeyBinding::GetAssignedKey(Action action) const
+sf::Keyboard::Scancode KeyBinding::GetAssignedKey(Action action) const
 {
     for (const auto& pair : m_key_map)
     {
         if (pair.second == action)
+        {
             return pair.first;
+        }
     }
-    return sf::Keyboard::Key::Unknown;
+    return sf::Keyboard::Scancode::Unknown;
 }
 
-bool KeyBinding::CheckAction(sf::Keyboard::Key key, Action& out_action) const
+bool KeyBinding::CheckAction(sf::Keyboard::Scancode key, Action& out_action) const
 {
     auto found = m_key_map.find(key);
     if (found == m_key_map.end())
+    {
         return false;
+    }
 
     out_action = found->second;
     return true;
 }
 
-bool KeyBinding::IsRealtimeAction(Action action) const
+void KeyBinding::GetRealtimeActions(std::vector<Action>& out_actions) const
 {
-    return ::IsRealtimeAction(action);
+    for (const auto& pair : m_key_map)
+    {
+        if (sf::Keyboard::isKeyPressed(pair.first) && IsRealtimeAction(pair.second))
+        {
+            out_actions.push_back(pair.second);
+        }
+    }
 }

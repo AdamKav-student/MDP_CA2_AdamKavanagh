@@ -1,3 +1,4 @@
+// Adam Kavanagh - D00247069
 #include "sprite_node.hpp"
 
 SpriteNode::SpriteNode(const sf::Texture& texture):m_sprite(texture)

@@ -1,20 +1,18 @@
+// Adam Kavanagh - D00247069
 #include "world.hpp"
-#include "sprite_node.hpp"
-#include <iostream>
-#include "state.hpp"
-#include <SFML/System/Angle.hpp>
-#include "Projectile.hpp"
-#include "pickup.hpp"
+#include "constants.hpp"
+#include "projectile.hpp"
 #include "particle_node.hpp"
 #include "particletype.hpp"
 #include "sound_node.hpp"
-
-// Tank conversion additions
 #include "debris_node.hpp"
 #include "debris_layout.hpp"
 #include "obstacle_collision.hpp"
 #include "team_assignment.hpp"
 #include "tutorial_config.hpp"
+#include "posteffect.hpp"
+#include <algorithm>
+#include <set>
 
 World::World(sf::RenderTarget& output_target, FontHolder& font, SoundPlayer& sounds, bool networked)
     : m_target(output_target)
@@ -24,23 +22,17 @@ World::World(sf::RenderTarget& output_target, FontHolder& font, SoundPlayer& sou
     , m_sounds(sounds)
     , m_scene_graph(ReceiverCategories::kNone)
     , m_scene_layers()
-    // Widened from the original vertical-scroll corridor (camera-width x
-    // 1500) into an open square-ish arena, since tanks need room to
-    // maneuver in both axes, not just scroll upward. Adjust the multiplier
-    // to taste - this is just a starting size.
-    , m_world_bounds(sf::Vector2f(0.f, 0.f), sf::Vector2f(m_camera.getSize().x * 2.5f, m_camera.getSize().y * 2.5f))
-    , m_spawn_position(m_world_bounds.size.x / 2.f, m_world_bounds.size.y / 2.f)
-    , m_scroll_speed(0.f)
-    , m_scrollspeed_compensation(1.f)
-    , m_player_aircraft()
-    , m_player_tanks()
-    , m_tutorial_enemy_tank(nullptr)
+    // Fixed size, identical on every machine - see constants.hpp for why this
+    // must not depend on the window.
+    , m_world_bounds(sf::Vector2f(0.f, 0.f), sf::Vector2f(kWorldWidth, kWorldHeight))
+    , m_spawn_position(kWorldWidth / 2.f, kWorldHeight / 2.f)
+    , m_tanks()
+    , m_training_enemy(nullptr)
+    , m_training_enemy_destroyed(false)
+    , m_training_player_destroyed(false)
     , m_local_player_identifier(0)
-    , m_enemy_spawn_points()
-    , m_active_enemies()
     , m_networked_world(networked)
     , m_network_node(nullptr)
-    , m_finish_sprite(nullptr)
 {
     m_scene_texture.resize({ m_target.getSize().x, m_target.getSize().y });
     LoadTextures();
@@ -48,89 +40,162 @@ World::World(sf::RenderTarget& output_target, FontHolder& font, SoundPlayer& sou
     m_camera.setCenter(m_spawn_position);
 }
 
-void World::SetWorldScrollCompensation(float compensation)
+void World::LoadTextures()
 {
-    m_scrollspeed_compensation = compensation;
+    m_textures.Load(TextureID::kTankSheet, "Media/Textures/Sprite-Sheet.png");
+    m_textures.Load(TextureID::kBattlefield, "Media/Textures/Road to Caen.png");
+    m_textures.Load(TextureID::kEntities, "Media/Textures/Entities.png");
+    m_textures.Load(TextureID::kExplosion, "Media/Textures/Explosion.png");
+    m_textures.Load(TextureID::kParticle, "Media/Textures/Particle.png");
+}
+
+void World::BuildScene()
+{
+    for (int i = 0; i < static_cast<int>(SceneLayers::kLayerCount); ++i)
+    {
+        // Only the entity layer answers to scene-wide commands - that is where
+        // shells get attached when a tank fires.
+        ReceiverCategories category = (i == static_cast<int>(SceneLayers::kEntities))
+            ? ReceiverCategories::kScene : ReceiverCategories::kNone;
+        SceneNode::Ptr layer(new SceneNode(category));
+        m_scene_layers[i] = layer.get();
+        m_scene_graph.AttachChild(std::move(layer));
+    }
+
+    AddBattlefieldBackground();
+
+    std::unique_ptr<ParticleNode> smoke_node(new ParticleNode(ParticleType::kSmoke, m_textures));
+    m_scene_layers[static_cast<int>(SceneLayers::kGround)]->AttachChild(std::move(smoke_node));
+
+    std::unique_ptr<ParticleNode> propellant_node(new ParticleNode(ParticleType::kPropellant, m_textures));
+    m_scene_layers[static_cast<int>(SceneLayers::kGround)]->AttachChild(std::move(propellant_node));
+
+    std::unique_ptr<SoundNode> sound_node(new SoundNode(m_sounds));
+    m_scene_graph.AttachChild(std::move(sound_node));
+
+    if (m_networked_world)
+    {
+        std::unique_ptr<NetworkNode> network_node(new NetworkNode());
+        m_network_node = network_node.get();
+        m_scene_graph.AttachChild(std::move(network_node));
+
+        BuildMultiplayerScene();
+    }
+    else
+    {
+        BuildTrainingScene();
+    }
+}
+
+void World::AddBattlefieldBackground()
+{
+    // The map art is exactly the size of the arena, so it is drawn once at
+    // 1:1 with no tiling seams. setRepeated is still enabled so that a
+    // smaller replacement texture would tile rather than stretch.
+    sf::Texture& texture = m_textures.Get(TextureID::kBattlefield);
+    texture.setRepeated(true);
+
+    const sf::IntRect texture_rect(
+        sf::Vector2i(0, 0),
+        sf::Vector2i(static_cast<int>(m_world_bounds.size.x), static_cast<int>(m_world_bounds.size.y)));
+
+    std::unique_ptr<SpriteNode> background(new SpriteNode(texture, texture_rect));
+    background->setPosition(m_world_bounds.position);
+    m_scene_layers[static_cast<int>(SceneLayers::kBackground)]->AttachChild(std::move(background));
+}
+
+void World::AddDebris()
+{
+    for (const DebrisPlacement& placement : GetDebrisLayout())
+    {
+        const sf::Vector2f position(
+            m_world_bounds.position.x + placement.m_relative_position.x * m_world_bounds.size.x,
+            m_world_bounds.position.y + placement.m_relative_position.y * m_world_bounds.size.y);
+
+        std::unique_ptr<DebrisNode> debris(new DebrisNode(placement.m_type, m_textures.Get(TextureID::kTankSheet)));
+        debris->setPosition(position);
+        debris->setRotation(sf::degrees(placement.m_rotation_degrees));
+        m_scene_layers[static_cast<int>(SceneLayers::kGround)]->AttachChild(std::move(debris));
+    }
+}
+
+void World::BuildTrainingScene()
+{
+    // Training map: the player's own Sherman and a single stationary Panzer to
+    // destroy. No debris, so there is nothing between the two tanks while the
+    // player is learning to drive and aim.
+    std::unique_ptr<Tank> player_tank(new Tank(TankType::kSherman, m_textures, m_fonts));
+    player_tank->setPosition(TutorialConfig::GetPlayerSpawnPosition(m_world_bounds.size));
+    player_tank->SetIdentifier(TutorialConfig::kPlayerIdentifier);
+    m_tanks.push_back(player_tank.get());
+    m_scene_layers[static_cast<int>(SceneLayers::kEntities)]->AttachChild(std::move(player_tank));
+
+    SetLocalPlayerIdentifier(TutorialConfig::kPlayerIdentifier);
+
+    std::unique_ptr<Tank> enemy_tank(new Tank(TankType::kPanzer, m_textures, m_fonts));
+    enemy_tank->setPosition(TutorialConfig::GetEnemySpawnPosition(m_world_bounds.size));
+    enemy_tank->setRotation(sf::degrees(180.f));
+    enemy_tank->SetIdentifier(TutorialConfig::kEnemyIdentifier);
+    m_training_enemy = enemy_tank.get();
+    m_tanks.push_back(enemy_tank.get());
+    m_scene_layers[static_cast<int>(SceneLayers::kEntities)]->AttachChild(std::move(enemy_tank));
+
+    m_spawn_position = TutorialConfig::GetPlayerSpawnPosition(m_world_bounds.size);
+}
+
+void World::BuildMultiplayerScene()
+{
+    // No tanks here - they arrive through AddTank() as players connect. The
+    // obstacles come from the shared fixed layout, so every client builds an
+    // identical map without a single byte being sent.
+    AddDebris();
 }
 
 void World::Update(sf::Time dt)
 {
-    // Scroll the world (dormant for tanks - m_scroll_speed stays 0.f unless
-    // something still sets it for the old plane path)
-    m_camera.move(sf::Vector2f(0, m_scroll_speed * dt.asSeconds() * m_scrollspeed_compensation));
+    DestroyProjectilesOutsideWorld();
 
-    for (Aircraft* a : m_player_aircraft)
-    {
-        a->SetVelocity(0.f, 0.f);
-    }
-    // Deliberately NOT doing this for m_player_tanks - Tank doesn't use
-    // Entity's velocity system (hull movement is direct move() calls in
-    // player.cpp's command lambdas), so there's nothing to zero here.
-
-    DestroyEntitiesOutsideView();
-    GuideMissiles();
-
-    //Process commands from the scenegraph
     while (!m_command_queue.IsEmpty())
     {
         m_scene_graph.OnCommand(m_command_queue.Pop(), dt);
     }
-    AdaptPlayerVelocity(); // aircraft only - do NOT call this on tanks, see AdaptPlayerVelocity's comment
 
     HandleCollisions();
+    KeepTanksInsideWorld();
 
-    auto first_to_remove = std::remove_if(m_player_aircraft.begin(), m_player_aircraft.end(), std::mem_fn(&Aircraft::IsMarkedForRemoval));
-    m_player_aircraft.erase(first_to_remove, m_player_aircraft.end());
+    // A destroyed tank stays in the scene until its explosion finishes, so the
+    // training flags are latched here before the wreck is swept away.
+    if (!m_networked_world)
+    {
+        if (m_training_enemy && m_training_enemy->IsDestroyed())
+        {
+            m_training_enemy_destroyed = true;
+        }
+        if (Tank* player = GetTank(m_local_player_identifier))
+        {
+            if (player->IsDestroyed())
+            {
+                m_training_player_destroyed = true;
+            }
+        }
+    }
 
-    auto first_tank_to_remove = std::remove_if(m_player_tanks.begin(), m_player_tanks.end(), std::mem_fn(&Tank::IsMarkedForRemoval));
-    m_player_tanks.erase(first_tank_to_remove, m_player_tanks.end());
+    // Checked before the erase: remove_if leaves the tail in an unspecified
+    // state, so it is not somewhere to go looking for a particular pointer.
+    if (m_training_enemy && m_training_enemy->IsMarkedForRemoval())
+    {
+        m_training_enemy = nullptr;
+    }
+
+    auto first_to_remove = std::remove_if(m_tanks.begin(), m_tanks.end(), std::mem_fn(&Tank::IsMarkedForRemoval));
+    m_tanks.erase(first_to_remove, m_tanks.end());
 
     m_scene_graph.RemoveWrecks();
-
-    SpawnEnemies();
-
     m_scene_graph.Update(dt, m_command_queue);
-    AdaptPlayerPosition();
-    AdaptTankPositions();
 
-    // Camera follow: prefer the local player's own tank if one exists,
-    // otherwise fall back to the old aircraft-following behaviour (kept so
-    // this still works during the transition while Aircraft is still around).
-    if (Tank* local_tank = GetTank(m_local_player_identifier))
-    {
-        sf::Vector2f position = local_tank->getPosition();
-        sf::Vector2f halfSize = m_camera.getSize() / 2.f;
-
-        float minX = m_world_bounds.position.x + halfSize.x;
-        float maxX = m_world_bounds.position.x + m_world_bounds.size.x - halfSize.x;
-        float minY = m_world_bounds.position.y + halfSize.y;
-        float maxY = m_world_bounds.position.y + m_world_bounds.size.y - halfSize.y;
-
-        if (minX > maxX) position.x = (minX + maxX) / 2.f; else position.x = std::max(minX, std::min(position.x, maxX));
-        if (minY > maxY) position.y = (minY + maxY) / 2.f; else position.y = std::max(minY, std::min(position.y, maxY));
-
-        m_camera.setCenter(position);
-    }
-    else if (!m_player_aircraft.empty())
-    {
-        sf::Vector2f position = m_player_aircraft.front()->getPosition();
-        sf::Vector2f halfSize = m_camera.getSize() / 2.f;
-
-        float minX = m_world_bounds.position.x + halfSize.x;
-        float maxX = m_world_bounds.position.x + m_world_bounds.size.x - halfSize.x;
-        float minY = m_world_bounds.position.y + halfSize.y;
-        float maxY = m_world_bounds.position.y + m_world_bounds.size.y - halfSize.y;
-
-        if (minX > maxX) position.x = (minX + maxX) / 2.f; else position.x = std::max(minX, std::min(position.x, maxX));
-        if (minY > maxY) position.y = (minY + maxY) / 2.f; else position.y = std::max(minY, std::min(position.y, maxY));
-
-        m_camera.setCenter(position);
-    }
-
-    //UpdateSounds();
+    UpdateCamera();
+    UpdateSounds();
 }
-
-
 
 void World::Draw()
 {
@@ -149,340 +214,9 @@ void World::Draw()
     }
 }
 
-Aircraft* World::GetAircraft(int identifier) const
-{
-    for (Aircraft* a : m_player_aircraft)
-    {
-        if (a->GetIdentifier() == identifier)
-        {
-            return a;
-        }
-    }
-    return nullptr;
-}
-
-void World::RemoveAircraft(uint8_t identifier)
-{
-    Aircraft* aircraft = GetAircraft(identifier);
-    if (aircraft)
-    {
-        aircraft->Destroy();
-        m_player_aircraft.erase(std::find(m_player_aircraft.begin(), m_player_aircraft.end(), aircraft));
-    }
-}
-
-Aircraft* World::AddAircraft(uint8_t identifier)
-{
-    std::unique_ptr<Aircraft> player(new Aircraft(AircraftType::kEagle, m_textures, m_fonts));
-    player->setPosition(m_camera.getCenter());
-    std::cout << "World::AddAircraft " << +identifier << std::endl;
-    player->SetIdentifier(identifier);
-
-    m_player_aircraft.emplace_back(player.get());
-    m_scene_layers[static_cast<int>(SceneLayers::kUpperAir)]->AttachChild(std::move(player));
-    return m_player_aircraft.back();
-}
-
-Tank* World::GetTank(int identifier) const
-{
-    for (Tank* t : m_player_tanks)
-    {
-        if (t->GetIdentifier() == identifier)
-        {
-            return t;
-        }
-    }
-    return nullptr;
-}
-
-void World::RemoveTank(uint8_t identifier)
-{
-    Tank* tank = GetTank(identifier);
-    if (tank)
-    {
-        tank->Destroy();
-        m_player_tanks.erase(std::find(m_player_tanks.begin(), m_player_tanks.end(), tank));
-    }
-}
-
-Tank* World::AddTank(uint8_t identifier)
-{
-    TankType type = AssignTankType(identifier);
-    std::unique_ptr<Tank> tank(new Tank(type, m_textures, m_fonts));
-    tank->setPosition(m_camera.getCenter());
-    std::cout << "World::AddTank " << +identifier << std::endl;
-    tank->SetIdentifier(identifier);
-
-    m_player_tanks.emplace_back(tank.get());
-    m_scene_layers[static_cast<int>(SceneLayers::kUpperAir)]->AttachChild(std::move(tank));
-    return m_player_tanks.back();
-}
-
-void World::SetLocalPlayerIdentifier(uint8_t identifier)
-{
-    m_local_player_identifier = identifier;
-}
-
-bool World::IsTutorialComplete() const
-{
-    return m_tutorial_enemy_tank != nullptr && m_tutorial_enemy_tank->IsDestroyed();
-}
-
-void World::CreatePickup(sf::Vector2f position, PickupType type)
-{
-    std::unique_ptr<Pickup> pickup(new Pickup(type, m_textures));
-    pickup->setPosition(position);
-    pickup->SetVelocity(0.f, 1.f);
-    m_scene_layers[static_cast<int>(SceneLayers::kUpperAir)]->AttachChild(std::move(pickup));
-}
-
-bool World::PollGameAction(GameActions::Action& out)
-{
-    return m_network_node->PollGameAction(out);
-}
-
-void World::SetCurrentBattleFieldPosition(float lineY)
-{
-    m_camera.setCenter(sf::Vector2f(m_camera.getCenter().x, lineY - m_camera.getSize().y / 2));
-    m_spawn_position.y = m_world_bounds.size.y;
-}
-
-void World::SetWorldHeight(float height)
-{
-    m_world_bounds.size.y = height;
-}
-
 CommandQueue& World::GetCommandQueue()
 {
     return m_command_queue;
-}
-
-bool World::HasAlivePlayer() const
-{
-    return !m_player_aircraft.empty();
-}
-
-bool World::HasPlayerReachedEnd() const
-{
-    if (Aircraft* aircraft = GetAircraft(1))
-    {
-        return !m_world_bounds.contains(aircraft->getPosition());
-    }
-    return false;
-}
-
-void World::LoadTextures()
-{
-    m_textures.Load(TextureID::kEntities, "Media/Textures/Entities.png");
-    // Sprite-sheet for player models
-    m_textures.Load(TextureID::kSherman, "Media/Textures/S1.png");
-    m_textures.Load(TextureID::kTankSheet, "Media/Textures/TankSheet.png");
-    m_textures.Load(TextureID::kExplosion, "Media/Textures/Explosion.png");
-    m_textures.Load(TextureID::kFinishLine, "Media/Textures/FinishLine.png");
-    m_textures.Load(TextureID::kMap1, "Media/Textures/Road to caen.png");
-    m_textures.Load(TextureID::kParticle, "Media/Textures/Particle.png");
-}
-
-void World::AddTiledBackground()
-{
-    // "Road to caen" tiled across the full (now much larger) world bounds.
-    // setRepeated(true) + an IntRect bigger than the texture's real pixel
-    // size makes SFML wrap/tile it seamlessly - this is what makes the
-    // background "loop on itself" instead of showing once and stopping.
-    // (The old version only padded this in Y, to hide the scroll's leading
-    // edge before it scrolled into view - that padding is gone since
-    // there's no scrolling any more; this now tiles in both X and Y.)
-    sf::Texture& texture = m_textures.Get(TextureID::kMap1);
-    texture.setRepeated(true);
-
-    sf::IntRect texture_rect(
-        sf::Vector2i(0, 0),
-        sf::Vector2i(static_cast<int>(m_world_bounds.size.x), static_cast<int>(m_world_bounds.size.y)));
-
-    std::unique_ptr<SpriteNode> background_sprite(new SpriteNode(texture, texture_rect));
-    background_sprite->setPosition(sf::Vector2f(m_world_bounds.position.x, m_world_bounds.position.y));
-    m_scene_layers[static_cast<int>(SceneLayers::kBackground)]->AttachChild(std::move(background_sprite));
-}
-
-void World::BuildScene()
-{
-    //Initialise the different layers
-    for (int i = 0; i < static_cast<int>(SceneLayers::kLayerCount); i++)
-    {
-        ReceiverCategories category = (i == static_cast<int>(SceneLayers::kUpperAir)) ? ReceiverCategories::kScene : ReceiverCategories::kNone;
-        SceneNode::Ptr layer(new SceneNode(category));
-        m_scene_layers[i] = layer.get();
-        m_scene_graph.AttachChild(std::move(layer));
-    }
-
-    AddTiledBackground();
-
-    // No finish line in tank mode - the old finish-line sprite block is
-    // removed. (m_finish_sprite stays declared in world.hpp for now, just
-    // unused, rather than ripping out the member during this pass.)
-
-    //Add the particle nodes to the scene
-    std::unique_ptr<ParticleNode> smokeNode(new ParticleNode(ParticleType::kSmoke, m_textures));
-    m_scene_layers[static_cast<int>(SceneLayers::kLowerAir)]->AttachChild(std::move(smokeNode));
-
-    std::unique_ptr<ParticleNode> propellantNode(new ParticleNode(ParticleType::kPropellant, m_textures));
-    m_scene_layers[static_cast<int>(SceneLayers::kLowerAir)]->AttachChild(std::move(propellantNode));
-
-    //Add sound effect node
-    std::unique_ptr<SoundNode> soundNode(new SoundNode(m_sounds));
-    m_scene_graph.AttachChild(std::move(soundNode));
-
-    if (m_networked_world)
-    {
-        std::unique_ptr<NetworkNode> network_node(new NetworkNode());
-        m_network_node = network_node.get();
-        m_scene_graph.AttachChild(std::move(network_node));
-
-        BuildMultiplayerTankScene();
-    }
-    else
-    {
-        // World now serves as the single-player tutorial, replacing the
-        // old scripted plane campaign (AddEnemies()/finish line).
-        BuildTutorialScene();
-    }
-}
-
-void World::BuildTutorialScene()
-{
-    std::unique_ptr<Tank> player_tank(new Tank(TankType::kSherman, m_textures, m_fonts));
-    player_tank->setPosition(TutorialConfig::GetPlayerSpawnPosition(m_world_bounds.size));
-    player_tank->SetIdentifier(TutorialConfig::kPlayerIdentifier);
-    m_player_tanks.push_back(player_tank.get());
-    m_scene_layers[static_cast<int>(SceneLayers::kUpperAir)]->AttachChild(std::move(player_tank));
-    SetLocalPlayerIdentifier(TutorialConfig::kPlayerIdentifier);
-
-    std::unique_ptr<Tank> enemy_tank(new Tank(TankType::kPanzer, m_textures, m_fonts));
-    enemy_tank->setPosition(TutorialConfig::GetEnemySpawnPosition(m_world_bounds.size));
-    enemy_tank->SetIdentifier(TutorialConfig::kEnemyIdentifier);
-    m_tutorial_enemy_tank = enemy_tank.get();
-    m_scene_layers[static_cast<int>(SceneLayers::kUpperAir)]->AttachChild(std::move(enemy_tank));
-}
-
-void World::BuildMultiplayerTankScene()
-{
-    // No tanks spawned here - they arrive via AddTank() as players
-    // connect, exactly like AddAircraft already worked. Just scatter debris.
-    for (const auto& placement : GetDebrisLayout())
-    {
-        sf::Vector2f pos(m_world_bounds.position.x + placement.m_relative_position.x * m_world_bounds.size.x,
-            m_world_bounds.position.y + placement.m_relative_position.y * m_world_bounds.size.y);
-        std::unique_ptr<DebrisNode> debris(new DebrisNode(placement.m_type, m_textures.Get(TextureID::kTankSheet)));
-        debris->setPosition(pos);
-        debris->setRotation(sf::degrees(placement.m_rotation_degrees));
-        m_scene_layers[static_cast<int>(SceneLayers::kBackground)]->AttachChild(std::move(debris));
-    }
-}
-
-void World::AdaptPlayerVelocity()
-{
-    // Aircraft only. Deliberately never called for Tanks: this divides
-    // diagonal velocity by sqrt(2), which assumes two independent
-    // orthogonal inputs (plane WASD strafing). A tank's velocity being
-    // diagonal is just normal angled-facing, not a key-combo, and Tank
-    // doesn't use Entity's velocity system anyway (see the note in Update()).
-    for (Aircraft* aircraft : m_player_aircraft)
-    {
-        sf::Vector2f velocity = aircraft->GetVelocity();
-
-        //If they are moving diagonally divide by sqrt 2
-        if (velocity.x != 0.f && velocity.y != 0.f)
-        {
-            aircraft->SetVelocity(velocity / std::sqrt(2.f));
-        }
-        // Auto-scrolling removed: do not add scrolling velocity to aircraft
-    }
-}
-
-void World::AdaptPlayerPosition()
-{
-    //keep player on the screen
-    sf::FloatRect view_bounds = GetViewBounds();
-    const float border_distance = 40.f;
-
-    for (Aircraft* aircraft : m_player_aircraft)
-    {
-        sf::Vector2f position = aircraft->getPosition();
-        position.x = std::min(position.x, view_bounds.position.x + view_bounds.size.x - border_distance);
-        position.x = std::max(position.x, view_bounds.position.x + border_distance);
-        position.y = std::min(position.y, view_bounds.position.y + view_bounds.size.y - border_distance);
-        position.y = std::max(position.y, view_bounds.position.y + border_distance);
-        aircraft->setPosition(position);
-    }
-
-}
-
-void World::AdaptTankPositions()
-{
-    // Same idea as AdaptPlayerPosition, but for tanks - keeps every tank
-    // within the current view.
-    sf::FloatRect view_bounds = GetViewBounds();
-    const float border_distance = 40.f;
-
-    for (Tank* tank : m_player_tanks)
-    {
-        sf::Vector2f position = tank->getPosition();
-        position.x = std::min(position.x, view_bounds.position.x + view_bounds.size.x - border_distance);
-        position.x = std::max(position.x, view_bounds.position.x + border_distance);
-        position.y = std::min(position.y, view_bounds.position.y + view_bounds.size.y - border_distance);
-        position.y = std::max(position.y, view_bounds.position.y + border_distance);
-        tank->setPosition(position);
-    }
-}
-
-void World::SpawnEnemies()
-{
-    //Spawn an enemy when it is relevent i.e in BattlefieldBounds
-    while (!m_enemy_spawn_points.empty() && m_enemy_spawn_points.back().m_y > GetBattleFieldBounds().position.y)
-    {
-        SpawnPoint spawn = m_enemy_spawn_points.back();
-        std::unique_ptr<Aircraft> enemy(new Aircraft(spawn.m_type, m_textures, m_fonts));
-        enemy->setPosition(sf::Vector2f(spawn.m_x, spawn.m_y));
-        enemy->setRotation(sf::degrees(180.f));
-
-        //If the game is networked the server is responsible for spawning pickups
-
-        if (m_networked_world)
-        {
-            enemy->DisablePickups();
-        }
-
-        m_scene_layers[static_cast<int>(SceneLayers::kUpperAir)]->AttachChild(std::move(enemy));
-        m_enemy_spawn_points.pop_back();
-    }
-}
-
-void World::AddEnemy(AircraftType type, float relx, float rely)
-{
-    SpawnPoint spawn(type, m_spawn_position.x + relx, m_spawn_position.y - rely);
-    m_enemy_spawn_points.emplace_back(spawn);
-}
-
-void World::AddEnemies()
-{
-    // No longer called from BuildScene() - tank mode has no scripted plane
-    // waves. Left in place, unused, until Phase 5 cleanup removes it along
-    // with Aircraft.
-    if (m_networked_world)
-    {
-        return;
-    }
-    AddEnemy(AircraftType::kRaptor, 0.f, 500.f);
-    SortEnemies();
-}
-
-void World::SortEnemies()
-{
-    //Sort all enemies according to their y-value, such that lower enemies are checked first for spawning
-    std::sort(m_enemy_spawn_points.begin(), m_enemy_spawn_points.end(), [](SpawnPoint lhs, SpawnPoint rhs)
-        {
-            return lhs.m_y < rhs.m_y;
-        });
 }
 
 sf::FloatRect World::GetViewBounds() const
@@ -490,64 +224,119 @@ sf::FloatRect World::GetViewBounds() const
     return sf::FloatRect(m_camera.getCenter() - m_camera.getSize() / 2.f, m_camera.getSize());
 }
 
-sf::FloatRect World::GetBattleFieldBounds() const
+sf::FloatRect World::GetWorldBounds() const
 {
-    //Return camera bounds + a small area off screen where the enemies spawn
-    sf::FloatRect bounds = GetViewBounds();
-    bounds.position.y -= 100.f;
-    bounds.size.y += 100.f;
-    return bounds;
+    return m_world_bounds;
 }
 
-void World::GuideMissiles()
+Tank* World::GetTank(uint8_t identifier) const
 {
-    //Target the closest enemy in the world
-    Command enemyCollector;
-    enemyCollector.category = static_cast<int>(ReceiverCategories::kEnemyAircraft);
-    enemyCollector.action = DerivedAction<Aircraft>([this](Aircraft& enemy, sf::Time)
+    for (Tank* tank : m_tanks)
+    {
+        if (tank->GetIdentifier() == identifier)
         {
-            if (!enemy.IsDestroyed())
-            {
-                m_active_enemies.emplace_back(&enemy);
-            }
-        });
-
-    Command missileGuider;
-    missileGuider.category = static_cast<int>(ReceiverCategories::kAlliedProjectile);
-    missileGuider.action = DerivedAction<Projectile>([this](Projectile& missile, sf::Time)
-        {
-            // NOTE: Projectile::IsGuided()/GuideTowards() are removed once
-            // you apply the projectile.cpp patch from
-            // TANK_CONVERSION_README.md (no more missiles) - this whole
-            // method becomes dead code at that point (the command it
-            // pushes will just never find anything guided to act on).
-            // Left compiling for now since Aircraft/old bullets still
-            // reference Projectile the old way until Phase 5 cleanup.
-        });
-    m_command_queue.Push(enemyCollector);
-    m_command_queue.Push(missileGuider);
-    m_active_enemies.clear();
+            return tank;
+        }
+    }
+    return nullptr;
 }
 
-bool MatchesCategories(SceneNode::Pair& colliders, ReceiverCategories type1, ReceiverCategories type2)
+Tank* World::AddTank(uint8_t identifier)
 {
-    unsigned int category1 = colliders.first->GetCategory();
-    unsigned int category2 = colliders.second->GetCategory();
+    // The hull (and therefore the team) is derived from the identifier, so the
+    // server never has to tell anyone which side a player is on.
+    std::unique_ptr<Tank> tank(new Tank(AssignTankType(identifier), m_textures, m_fonts));
+    tank->setPosition(m_spawn_position);
+    tank->SetIdentifier(identifier);
 
-    if ((static_cast<int>(type1) & category1) && (static_cast<int>(type2) & category2))
+    m_tanks.push_back(tank.get());
+    m_scene_layers[static_cast<int>(SceneLayers::kEntities)]->AttachChild(std::move(tank));
+    return m_tanks.back();
+}
+
+void World::RemoveTank(uint8_t identifier)
+{
+    if (Tank* tank = GetTank(identifier))
     {
-        return true;
+        // Remove() rather than Destroy() so a disconnecting player's tank just
+        // disappears instead of exploding as though it had been killed.
+        tank->Remove();
+        m_tanks.erase(std::find(m_tanks.begin(), m_tanks.end(), tank));
+        if (tank == m_training_enemy)
+        {
+            m_training_enemy = nullptr;
+        }
     }
-    else if ((static_cast<int>(type1) & category2) && (static_cast<int>(type2) & category1))
+}
+
+void World::SetLocalPlayerIdentifier(uint8_t identifier)
+{
+    m_local_player_identifier = identifier;
+}
+
+uint8_t World::GetLocalPlayerIdentifier() const
+{
+    return m_local_player_identifier;
+}
+
+bool World::IsTutorialComplete() const
+{
+    return m_training_enemy_destroyed;
+}
+
+bool World::IsTutorialPlayerDestroyed() const
+{
+    return m_training_player_destroyed;
+}
+
+bool World::PollGameAction(GameActions::Action& out)
+{
+    return m_network_node != nullptr && m_network_node->PollGameAction(out);
+}
+
+bool World::IsAuthoritativeFor(const Tank& tank) const
+{
+    // Offline every tank is ours to simulate. Online, only the tank this
+    // client drives - everyone else's hitpoints arrive from the server.
+    return !m_networked_world || tank.GetIdentifier() == m_local_player_identifier;
+}
+
+void World::KeepTanksInsideWorld()
+{
+    // Clamped against the arena, not the camera: in multiplayer the view is
+    // just a window onto a much larger world and a tank must not be stopped
+    // by the edge of somebody's screen.
+    const float border = 40.f;
+
+    for (Tank* tank : m_tanks)
     {
-        std::swap(colliders.first, colliders.second);
-        return true;
+        sf::Vector2f position = tank->getPosition();
+        position.x = std::clamp(position.x, m_world_bounds.position.x + border, m_world_bounds.position.x + m_world_bounds.size.x - border);
+        position.y = std::clamp(position.y, m_world_bounds.position.y + border, m_world_bounds.position.y + m_world_bounds.size.y - border);
+        tank->setPosition(position);
     }
-    else
+}
+
+namespace
+{
+    bool MatchesCategories(SceneNode::Pair& colliders, ReceiverCategories type1, ReceiverCategories type2)
     {
+        const unsigned int category1 = colliders.first->GetCategory();
+        const unsigned int category2 = colliders.second->GetCategory();
+
+        if ((static_cast<unsigned int>(type1) & category1) && (static_cast<unsigned int>(type2) & category2))
+        {
+            return true;
+        }
+
+        if ((static_cast<unsigned int>(type1) & category2) && (static_cast<unsigned int>(type2) & category1))
+        {
+            std::swap(colliders.first, colliders.second);
+            return true;
+        }
+
         return false;
     }
-
 }
 
 void World::HandleCollisions()
@@ -557,100 +346,112 @@ void World::HandleCollisions()
 
     for (SceneNode::Pair pair : collision_pairs)
     {
-        if (MatchesCategories(pair, ReceiverCategories::kPlayerAircraft, ReceiverCategories::kEnemyAircraft))
-        {
-            auto& player = static_cast<Aircraft&>(*pair.first);
-            auto& enemy = static_cast<Aircraft&>(*pair.second);
-            //Collision response
-            player.Damage(enemy.GetHitPoints());
-            enemy.Destroy();
-        }
-        else if (MatchesCategories(pair, ReceiverCategories::kPlayerAircraft, ReceiverCategories::kPickup))
-        {
-            auto& player = static_cast<Aircraft&>(*pair.first);
-            auto& pickup = static_cast<Pickup&>(*pair.second);
-            //Collision response
-            pickup.Apply(player);
-            pickup.Destroy();
-            player.PlayLocalSound(m_command_queue, SoundEffect::kCollectPickup);
-        }
-        else if (MatchesCategories(pair, ReceiverCategories::kPlayerAircraft, ReceiverCategories::kEnemyProjectile) || MatchesCategories(pair, ReceiverCategories::kEnemyAircraft, ReceiverCategories::kAlliedProjectile))
-        {
-            auto& aircraft = static_cast<Aircraft&>(*pair.first);
-            auto& projectile = static_cast<Projectile&>(*pair.second);
-            //Collision response
-            aircraft.Damage(projectile.GetDamage());
-            projectile.Destroy();
-        }
-        // Opposing-team shell hits a tank
-        else if (MatchesCategories(pair, ReceiverCategories::kAxisTeamTank, ReceiverCategories::kAlliesTeamProjectile) ||
-            MatchesCategories(pair, ReceiverCategories::kAlliesTeamTank, ReceiverCategories::kAxisTeamProjectile))
+        // An enemy shell struck a tank.
+        if (MatchesCategories(pair, ReceiverCategories::kAlliesTank, ReceiverCategories::kAxisProjectile) ||
+            MatchesCategories(pair, ReceiverCategories::kAxisTank, ReceiverCategories::kAlliesProjectile))
         {
             auto& tank = static_cast<Tank&>(*pair.first);
             auto& shell = static_cast<Projectile&>(*pair.second);
 
-            tank.Damage(static_cast<int>(shell.GetDamage()));
+            // The shell is consumed on every client so the visuals agree, but
+            // the damage is only applied by the machine that owns the tank.
             shell.Destroy();
-            // No local kill-registration here - in multiplayer, GameServer
-            // detects the kill itself from the relayed hitpoints reaching
-            // zero. In the tutorial, IsTutorialComplete() checks
-            // m_tutorial_enemy_tank->IsDestroyed() directly - see GameState.
+
+            if (!IsAuthoritativeFor(tank) || tank.IsDestroyed())
+            {
+                continue;
+            }
+
+            tank.Damage(shell.GetDamage());
+
+            if (tank.IsDestroyed() && m_network_node)
+            {
+                // Report our own death, naming the shooter. Because only the
+                // victim ever sends this, the server counts the kill once no
+                // matter how many clients saw the impact.
+                m_network_node->NotifyGameAction(GameActions::kTankDestroyed,
+                    tank.GetIdentifier(), shell.GetOwnerIdentifier(), tank.GetWorldPosition());
+            }
         }
-        // Tank vs debris - physically blocked
+        // A tank drove into map cover.
         else if (MatchesCategories(pair, ReceiverCategories::kAnyTank, ReceiverCategories::kObstacle))
         {
             auto& tank = static_cast<Tank&>(*pair.first);
-            auto& debris = *pair.second;
-            tank.move(ResolveAabbPushOut(tank.GetBoundingRect(), debris.GetBoundingRect()));
+            tank.move(ResolveAabbPushOut(tank.GetBoundingRect(), pair.second->GetBoundingRect()));
         }
-        // Shell vs debris - shell destroyed
-        else if (MatchesCategories(pair, ReceiverCategories::kAnyTankProjectile, ReceiverCategories::kObstacle))
+        // A shell hit map cover.
+        else if (MatchesCategories(pair, ReceiverCategories::kAnyProjectile, ReceiverCategories::kObstacle))
         {
             static_cast<Projectile&>(*pair.first).Destroy();
+        }
+        // Two tanks collided - push them apart rather than letting them
+        // overlap, and let the owning client resolve its own tank.
+        else if (MatchesCategories(pair, ReceiverCategories::kAnyTank, ReceiverCategories::kAnyTank))
+        {
+            auto& first = static_cast<Tank&>(*pair.first);
+            auto& second = static_cast<Tank&>(*pair.second);
+
+            if (IsAuthoritativeFor(first))
+            {
+                first.move(ResolveAabbPushOut(first.GetBoundingRect(), second.GetBoundingRect()));
+            }
+            if (IsAuthoritativeFor(second))
+            {
+                second.move(ResolveAabbPushOut(second.GetBoundingRect(), first.GetBoundingRect()));
+            }
         }
     }
 }
 
-void World::DestroyEntitiesOutsideView()
+void World::DestroyProjectilesOutsideWorld()
 {
     Command command;
-    command.category = static_cast<int>(ReceiverCategories::kEnemyAircraft)
-        | static_cast<int>(ReceiverCategories::kProjectile)
-        | static_cast<int>(ReceiverCategories::kAnyTankProjectile);
-    command.action = DerivedAction<Entity>([this](Entity& e, sf::Time dt)
+    command.category = static_cast<unsigned int>(ReceiverCategories::kAnyProjectile);
+    command.action = DerivedAction<Entity>([this](Entity& entity, sf::Time)
         {
-            //Does the object intersect with the battlefield
-            if (GetBattleFieldBounds().findIntersection(e.GetBoundingRect()) == std::nullopt)
+            if (m_world_bounds.findIntersection(entity.GetBoundingRect()) == std::nullopt)
             {
-                e.Remove();
+                entity.Remove();
             }
         });
     m_command_queue.Push(command);
+}
 
+void World::UpdateCamera()
+{
+    Tank* local_tank = GetTank(m_local_player_identifier);
+    if (!local_tank)
+    {
+        return;
+    }
+
+    // Follow the local tank, but never show anything outside the arena.
+    sf::Vector2f position = local_tank->getPosition();
+    const sf::Vector2f half_size = m_camera.getSize() / 2.f;
+
+    const float min_x = m_world_bounds.position.x + half_size.x;
+    const float max_x = m_world_bounds.position.x + m_world_bounds.size.x - half_size.x;
+    const float min_y = m_world_bounds.position.y + half_size.y;
+    const float max_y = m_world_bounds.position.y + m_world_bounds.size.y - half_size.y;
+
+    // If the window is wider than the map there is nothing to clamp to, so
+    // centre on the map instead of flipping the bounds inside out.
+    position.x = (min_x > max_x) ? (min_x + max_x) / 2.f : std::clamp(position.x, min_x, max_x);
+    position.y = (min_y > max_y) ? (min_y + max_y) / 2.f : std::clamp(position.y, min_y, max_y);
+
+    m_camera.setCenter(position);
 }
 
 void World::UpdateSounds()
 {
-    sf::Vector2f listener_position;
-
-    // 0 players (multiplayer mode, until server is connected) -> view center
-    if (m_player_aircraft.empty())
+    if (Tank* local_tank = GetTank(m_local_player_identifier))
     {
-        listener_position = m_camera.getCenter();
+        m_sounds.SetListenerPosition(local_tank->GetWorldPosition());
     }
-
-    // 1 or more players -> mean position between all aircrafts
     else
     {
-        for (Aircraft* aircraft : m_player_aircraft)
-        {
-            listener_position += aircraft->GetWorldPosition();
-        }
-
-        listener_position /= static_cast<float>(m_player_aircraft.size());
+        m_sounds.SetListenerPosition(m_camera.getCenter());
     }
-
-    m_sounds.SetListenerPosition(listener_position);
 
     m_sounds.RemoveStoppedSounds();
 }

@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
     <Filter Include="Source Files">
@@ -13,15 +13,12 @@
       <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
       <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
     </Filter>
+      <ClInclude Include="packet_sender.hpp">
+      <Filter>Source Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="action.hpp">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="aircraft.hpp">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="aircraft_type.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="animation.hpp">
@@ -66,9 +63,6 @@
     <ClInclude Include="fontID.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="game_over_state.hpp">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="game_server.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -81,13 +75,7 @@
     <ClInclude Include="label.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="menu_options.hpp">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="menu_state.hpp">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="mission_status.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="multiplayer_gamestate.hpp">
@@ -115,12 +103,6 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="pause_state.hpp">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="pickup.hpp">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="pickup_type.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="player.hpp">
@@ -265,9 +247,6 @@
     <ClCompile Include="player.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="pickup.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="pause_state.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -299,9 +278,6 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="game_server.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="game_over_state.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="entity.cpp">
@@ -337,16 +313,46 @@
     <ClCompile Include="animation.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="aircraft.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="tank.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="turret_node.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="debris_type.cpp">
+      <ClInclude Include="debris_layout.hpp">
+      <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="debris_node.hpp">
+      <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="high_score.hpp">
+      <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="net_compression.hpp">
+      <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="obstacle_collision.hpp">
+      <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="result_state.hpp">
+      <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="team_assignment.hpp">
+      <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClCompile Include="debris_layout.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="debris_node.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="high_score.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="obstacle_collision.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="result_state.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
