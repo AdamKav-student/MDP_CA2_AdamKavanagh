@@ -3,7 +3,6 @@
 #include "state.hpp"
 #include "world.hpp"
 #include "player.hpp"
-#include "hud_panel.hpp"
 
 // The offline training mission: one Sherman under the player's control and one
 // stationary Panzer to knock out. Destroying it shows the victory card, which
@@ -24,6 +23,5 @@ private:
 	World		m_world;
 	Player		m_player;
 	sf::Text	m_objective_text;
-	HudPanel	m_objective_panel;
 	bool		m_result_pushed;
 };

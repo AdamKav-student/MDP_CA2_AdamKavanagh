@@ -25,7 +25,6 @@
     <ClInclude Include="result_state.hpp" />
     <ClInclude Include="team_assignment.hpp" />
       <ClInclude Include="packet_sender.hpp" />
-      <ClInclude Include="hud_panel.hpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="action.hpp" />
@@ -136,7 +135,6 @@
     <ClCompile Include="high_score.cpp" />
     <ClCompile Include="obstacle_collision.cpp" />
     <ClCompile Include="result_state.cpp" />
-      <ClCompile Include="hud_panel.cpp" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>18.0</VCProjectVersion>

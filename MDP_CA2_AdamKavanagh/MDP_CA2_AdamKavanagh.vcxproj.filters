@@ -16,9 +16,6 @@
       <ClInclude Include="packet_sender.hpp">
       <Filter>Source Files</Filter>
     </ClInclude>
-      <ClInclude Include="hud_panel.hpp">
-      <Filter>Source Files</Filter>
-    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="action.hpp">
@@ -356,9 +353,6 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="result_state.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-      <ClCompile Include="hud_panel.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

@@ -13,11 +13,9 @@ GameState::GameState(StateStack& stack, Context context)
 	, m_result_pushed(false)
 {
 	m_objective_text.setCharacterSize(22);
-	m_objective_text.setFillColor(sf::Color::White);
+	m_objective_text.setFillColor(sf::Color::Black);
 	m_objective_text.setPosition(sf::Vector2f(20.f, 20.f));
 	m_objective_text.setString("TRAINING\nWASD drives, arrow keys traverse the turret, Space fires\nObjective: destroy the enemy Panzer");
-	// The briefing never changes, so the plate only has to be fitted once.
-	m_objective_panel.FitTo(m_objective_text);
 
 	context.music->Play(MusicThemes::kMissionTheme);
 }
@@ -32,7 +30,6 @@ void GameState::DrawObjectiveText()
 {
 	sf::RenderWindow& window = *GetContext().window;
 	window.setView(window.getDefaultView());
-	window.draw(m_objective_panel);
 	window.draw(m_objective_text);
 }
 

@@ -67,10 +67,11 @@ MultiplayerGameState::MultiplayerGameState(StateStack& stack, Context context, b
     , m_time_since_last_packet(sf::Time::Zero)
 {
     m_broadcast_text.setCharacterSize(22);
+    m_broadcast_text.setFillColor(sf::Color::Black);
     m_broadcast_text.setPosition(sf::Vector2f(m_window.getSize().x / 2.f, 90.f));
 
     m_scoreboard_text.setCharacterSize(22);
-    m_scoreboard_text.setFillColor(sf::Color::White);
+    m_scoreboard_text.setFillColor(sf::Color::Black);
     m_scoreboard_text.setPosition(sf::Vector2f(20.f, 20.f));
 
     m_failed_connection_text.setCharacterSize(35);
@@ -127,12 +128,10 @@ void MultiplayerGameState::Draw()
     m_world.Draw();
 
     m_window.setView(m_window.getDefaultView());
-    m_window.draw(m_scoreboard_panel);
     m_window.draw(m_scoreboard_text);
 
     if (!m_broadcasts.empty())
     {
-        m_window.draw(m_broadcast_panel);
         m_window.draw(m_broadcast_text);
     }
 }
@@ -396,7 +395,6 @@ void MultiplayerGameState::ShowFrontBroadcast()
 {
     m_broadcast_text.setString(m_broadcasts.front());
     Utility::CentreOrigin(m_broadcast_text);
-    m_broadcast_panel.FitTo(m_broadcast_text);
     m_broadcast_elapsed_time = sf::Time::Zero;
 }
 
@@ -413,7 +411,6 @@ void MultiplayerGameState::UpdateScoreboardText()
     }
 
     m_scoreboard_text.setString(stream.str());
-    m_scoreboard_panel.FitTo(m_scoreboard_text);
 }
 
 void MultiplayerGameState::ApplySnapshot(const TankSnapshot& snapshot, bool is_spawn)
