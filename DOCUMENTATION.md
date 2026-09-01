@@ -134,7 +134,7 @@ stream back into discrete messages.
 | Type | Payload | Purpose |
 |---|---|---|
 | `kBroadcastMessage` | `string` | Join/leave/kill notices, high-score announcement. |
-| `kInitialState` | `u16 secs, u16 allies, u16 axis, u8 count, count × TankSnapshot` | Sent once to a joining client so it can build the world as it stands. |
+| `kInitialState` | `u16 secs, u16 allies, u16 axis, u8 count, count × TankSnapshot` | Sent once to a joining client so it can build the world as it stands. Excludes the client's own tank, which follows in `kSpawnSelf`. |
 | `kSpawnSelf` | `TankSnapshot` | "This tank is yours." Receiver binds the keyboard to it. |
 | `kPlayerConnect` | `TankSnapshot` | Somebody else joined. |
 | `kPlayerDisconnect` | `u8 id` | Remove that tank. |
@@ -162,13 +162,19 @@ Ordering matters and is deliberate:
 
 1. `accept()` succeeds; the server allocates the next identifier, derives the
    team and the spawn point from it, and records the tank.
-2. `kInitialState` goes to the newcomer **first**, describing the world as it
-   already is.
-3. `kSpawnSelf` tells the newcomer which of those tanks is its own.
+2. `kInitialState` goes to the newcomer **first**, describing every tank that
+   is already in the match — but deliberately **not** its own.
+3. `kSpawnSelf` tells the newcomer about its own tank, the one it drives.
 4. `kPlayerConnect` goes to *everyone else*.
 
-Doing (2) before (4) is what stops a joining client receiving its own
-`kPlayerConnect` and ending up with a duplicate tank.
+Each step tells the newcomer about a tank exactly once, and that is the whole
+point of the ordering. The new tank is recorded in step 1, so it is already in
+the server's table by step 2; leaving it out there is what stops the client
+building it twice, once from `kInitialState` and again from `kSpawnSelf`. Doing
+(2) and (3) before (4) is what stops it hearing about itself a third time
+through its own `kPlayerConnect`. `World::AddTank` also refuses to create a
+second hull for an identifier it already holds, so a duplicate announcement
+from any future source cannot put two tanks on one player.
 
 ---
 

@@ -206,9 +206,9 @@ void GameServer::HandleIncomingConnections()
 
     m_peers[m_connected_players]->m_tank_identifier = identifier;
 
-    // Order matters: the newcomer must learn about the world that already
-    // exists before anybody is told about the newcomer, otherwise it would
-    // receive its own kPlayerConnect and end up with a duplicate tank.
+    // Order matters. The newcomer is told about the world that already exists
+    // first, then about its own tank, and only then is everybody else told
+    // about the newcomer - so it never hears about its own tank twice.
     InformWorldState(*m_peers[m_connected_players]);
 
     sf::Packet spawn_self;
@@ -540,14 +540,30 @@ void GameServer::HandleDisconnections()
 
 void GameServer::InformWorldState(RemotePeer& peer)
 {
+    // Everybody EXCEPT the peer being informed. Its own tank is already in
+    // m_tank_info by this point, and it arrives at the client a moment later
+    // in kSpawnSelf; sending it here as well would have the client build the
+    // same tank twice, leaving two hulls answering to the one identifier.
+    std::size_t tank_count = 0;
+    for (const auto& entry : m_tank_info)
+    {
+        if (entry.first != peer.m_tank_identifier)
+        {
+            ++tank_count;
+        }
+    }
+
     sf::Packet packet;
     packet << static_cast<uint8_t>(Server::PacketType::kInitialState);
     packet << GetSecondsRemaining() << m_allies_score << m_axis_score;
-    packet << static_cast<uint8_t>(m_tank_info.size());
+    packet << static_cast<uint8_t>(tank_count);
 
     for (const auto& entry : m_tank_info)
     {
-        packet << entry.second.m_snapshot;
+        if (entry.first != peer.m_tank_identifier)
+        {
+            packet << entry.second.m_snapshot;
+        }
     }
 
     QueuePacket(peer, packet);

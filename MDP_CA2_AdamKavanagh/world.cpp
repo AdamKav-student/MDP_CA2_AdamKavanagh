@@ -246,6 +246,15 @@ Tank* World::GetTank(uint8_t identifier) const
 
 Tank* World::AddTank(uint8_t identifier)
 {
+    // Identifiers are unique for the life of a match, so a request to add one
+    // that is already here means the same spawn was announced twice. Hand back
+    // what exists rather than building a second hull that would sit on top of
+    // the first and answer to the same input.
+    if (Tank* existing = GetTank(identifier))
+    {
+        return existing;
+    }
+
     // The hull (and therefore the team) is derived from the identifier, so the
     // server never has to tell anyone which side a player is on.
     std::unique_ptr<Tank> tank(new Tank(AssignTankType(identifier), m_textures, m_fonts));
