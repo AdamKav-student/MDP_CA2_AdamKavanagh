@@ -42,6 +42,7 @@ void ResultState::Draw()
 		m_background_sprite.setPosition(sf::Vector2f(0.f, 0.f));
 	}
 	window.draw(m_background_sprite);
+	window.draw(m_countdown_panel);
 	window.draw(m_countdown_text);
 }
 
@@ -58,6 +59,8 @@ bool ResultState::Update(sf::Time dt)
 
 	sf::Vector2f window_size(GetContext().window->getSize());
 	m_countdown_text.setPosition(sf::Vector2f(window_size.x / 2.f, window_size.y * 0.9f));
+	// Refitted every frame because the countdown digit changes the width.
+	m_countdown_panel.FitTo(m_countdown_text);
 
 	if (m_elapsed_time >= sf::seconds(kResultScreenSeconds))
 	{

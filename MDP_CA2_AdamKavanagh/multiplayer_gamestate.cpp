@@ -127,10 +127,12 @@ void MultiplayerGameState::Draw()
     m_world.Draw();
 
     m_window.setView(m_window.getDefaultView());
+    m_window.draw(m_scoreboard_panel);
     m_window.draw(m_scoreboard_text);
 
     if (!m_broadcasts.empty())
     {
+        m_window.draw(m_broadcast_panel);
         m_window.draw(m_broadcast_text);
     }
 }
@@ -373,11 +375,29 @@ void MultiplayerGameState::UpdateBroadcastMessage(sf::Time elapsed_time)
 
         if (!m_broadcasts.empty())
         {
-            m_broadcast_text.setString(m_broadcasts.front());
-            Utility::CentreOrigin(m_broadcast_text);
-            m_broadcast_elapsed_time = sf::Time::Zero;
+            ShowFrontBroadcast();
         }
     }
+}
+
+void MultiplayerGameState::PushBroadcast(const std::string& message)
+{
+    m_broadcasts.push_back(message);
+
+    // Only the first one needs showing straight away; the rest queue up behind
+    // it and are promoted by UpdateBroadcastMessage as each expires.
+    if (m_broadcasts.size() == 1)
+    {
+        ShowFrontBroadcast();
+    }
+}
+
+void MultiplayerGameState::ShowFrontBroadcast()
+{
+    m_broadcast_text.setString(m_broadcasts.front());
+    Utility::CentreOrigin(m_broadcast_text);
+    m_broadcast_panel.FitTo(m_broadcast_text);
+    m_broadcast_elapsed_time = sf::Time::Zero;
 }
 
 void MultiplayerGameState::UpdateScoreboardText()
@@ -393,6 +413,7 @@ void MultiplayerGameState::UpdateScoreboardText()
     }
 
     m_scoreboard_text.setString(stream.str());
+    m_scoreboard_panel.FitTo(m_scoreboard_text);
 }
 
 void MultiplayerGameState::ApplySnapshot(const TankSnapshot& snapshot, bool is_spawn)
@@ -442,14 +463,7 @@ void MultiplayerGameState::HandlePacket(uint8_t packet_type, sf::Packet& packet)
     {
         std::string message;
         packet >> message;
-        m_broadcasts.push_back(message);
-
-        if (m_broadcasts.size() == 1)
-        {
-            m_broadcast_text.setString(m_broadcasts.front());
-            Utility::CentreOrigin(m_broadcast_text);
-            m_broadcast_elapsed_time = sf::Time::Zero;
-        }
+        PushBroadcast(message);
     }
     break;
 
@@ -578,13 +592,7 @@ void MultiplayerGameState::HandlePacket(uint8_t packet_type, sf::Packet& packet)
 
         std::ostringstream stream;
         stream << "Player " << static_cast<int>(killer) << " knocked out Player " << static_cast<int>(victim);
-        m_broadcasts.push_back(stream.str());
-        if (m_broadcasts.size() == 1)
-        {
-            m_broadcast_text.setString(m_broadcasts.front());
-            Utility::CentreOrigin(m_broadcast_text);
-            m_broadcast_elapsed_time = sf::Time::Zero;
-        }
+        PushBroadcast(stream.str());
     }
     break;
 

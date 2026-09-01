@@ -4,6 +4,7 @@
 #include "world.hpp"
 #include "player.hpp"
 #include "packet_sender.hpp"
+#include "hud_panel.hpp"
 #include "game_server.hpp"
 #include "network_protocol.hpp"
 #include <SFML/Graphics/Text.hpp>
@@ -33,6 +34,8 @@ public:
 private:
     void HandlePacket(uint8_t packet_type, sf::Packet& packet);
     void UpdateBroadcastMessage(sf::Time elapsed_time);
+    void PushBroadcast(const std::string& message);
+    void ShowFrontBroadcast();
     void UpdateScoreboardText();
     void ApplySnapshot(const TankSnapshot& snapshot, bool is_spawn);
     void SendOwnState();
@@ -64,9 +67,11 @@ private:
 
     std::vector<std::string> m_broadcasts;
     sf::Text                m_broadcast_text;
+    HudPanel                m_broadcast_panel;
     sf::Time                m_broadcast_elapsed_time;
 
     sf::Text                m_scoreboard_text;
+    HudPanel                m_scoreboard_panel;
     sf::Text                m_failed_connection_text;
     sf::Clock               m_failed_connection_clock;
 

@@ -7,6 +7,11 @@ TextNode::TextNode(const FontHolder& fonts, std::string& text)
 {
 }
 
+void TextNode::SetColour(sf::Color colour)
+{
+	m_text.setFillColor(colour);
+}
+
 void TextNode::SetString(const std::string& text)
 {
 	m_text.setString(text);

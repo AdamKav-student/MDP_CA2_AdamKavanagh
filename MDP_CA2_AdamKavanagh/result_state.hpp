@@ -1,6 +1,7 @@
 // Adam Kavanagh - D00247069
 #pragma once
 #include "state.hpp"
+#include "hud_panel.hpp"
 #include <SFML/Graphics/Sprite.hpp>
 #include <SFML/Graphics/Text.hpp>
 
@@ -19,6 +20,7 @@ public:
 private:
 	sf::Sprite	m_background_sprite;
 	sf::Text	m_countdown_text;
+	HudPanel	m_countdown_panel;
 	sf::Time	m_elapsed_time;
 	bool		m_victory;
 };

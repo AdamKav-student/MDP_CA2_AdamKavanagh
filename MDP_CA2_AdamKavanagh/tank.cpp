@@ -61,6 +61,10 @@ Tank::Tank(TankType type, const TextureHolder& textures, const FontHolder& fonts
 
     std::string health_text = "";
     std::unique_ptr<TextNode> health_display(new TextNode(fonts, health_text));
+    // Red rather than white: this label tracks the tank across the whole map,
+    // so it cannot rely on a backing plate the way the fixed HUD readouts do,
+    // and red separates it from both the pale sand and the dark hedgerows.
+    health_display->SetColour(sf::Color(220, 45, 45));
     health_display->setPosition(sf::Vector2f(0.f, 80.f));
     m_health_display = health_display.get();
     AttachChild(std::move(health_display));
